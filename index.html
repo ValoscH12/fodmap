@@ -264,7 +264,15 @@ body{min-height:100vh;padding-bottom:80px}
 
 <header class="app-header">
   <h1>🥦 Analyseur FODMAP</h1>
-  <p>Végétarien · Source Monash University · <span id="sync-status" style="font-size:.75rem"></span></p>
+  <p style="display:flex;align-items:center;gap:8px">
+    <span style="font-size:.78rem;opacity:.8">Végétarien · Monash</span>
+    <span id="sync-status" style="font-size:.75rem;flex:1"></span>
+    <button onclick="showTokenSetup()"
+      style="padding:3px 10px;background:rgba(255,255,255,.2);color:#fff;
+      border:1px solid rgba(255,255,255,.5);border-radius:5px;
+      font-size:.75rem;cursor:pointer;font-family:var(--font);white-space:nowrap"
+      id="token-header-btn">🔐 Sync</button>
+  </p>
   <div class="nav-tabs">
     <button class="nav-tab active" onclick="goPage('repas')">🍽️ Mon repas</button>
     <button class="nav-tab" onclick="goPage('base')">📋 Base données</button>
@@ -1054,7 +1062,7 @@ function showTokenSetup() {
 
 function skipSetup() {
   document.getElementById('setup-overlay').style.display = 'none';
-  localStorage.setItem('fodmap_setup_skipped', '1');
+  setSyncStatus('idle', '🔴 Sans sync');
 }
 
 async function validateAndSaveToken() {
@@ -1595,11 +1603,11 @@ loadPhase3();
 renderPhase3Chips();
 renderRepas();
 
-// Afficher setup si pas de token et pas skippé
-if (!hasToken() && !localStorage.getItem('fodmap_setup_skipped')) {
+// Afficher setup si pas de token
+if (!hasToken()) {
   setTimeout(() => {
     document.getElementById('setup-overlay').style.display = 'flex';
-  }, 800);
+  }, 500);
 }
 
 // Mettre à jour le bouton token
