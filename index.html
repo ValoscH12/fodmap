@@ -1,0 +1,1669 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>🥦 FODMAP Analyser</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#1a7a4a">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="FODMAP">
+<link rel="apple-touch-icon" href="icon-192.png">
+<style>
+/* ── RESET & FONTS ────────────────────────────────── */
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap');
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --green:#1a7a4a;--green-l:#d5f5e3;--green-m:#2ecc71;
+  --orange:#e67e22;--orange-l:#fdebd0;
+  --red:#c0392b;--red-l:#fadbd8;
+  --blue:#1a5276;--blue-l:#d6eaf8;
+  --grey:#2c3e50;--grey-l:#f4f6f7;--grey-m:#7f8c8d;
+  --white:#fff;--border:#e0e6ea;
+  --radius:14px;--radius-sm:8px;
+  --shadow:0 2px 16px rgba(0,0,0,.08);
+  --font:'DM Sans',sans-serif;--mono:'DM Mono',monospace;
+}
+html{font-family:var(--font);background:#f0f4f2;color:#1a2634;font-size:15px}
+body{min-height:100vh;padding-bottom:80px}
+
+/* ── HEADER ───────────────────────────────────────── */
+.app-header{background:var(--green);color:#fff;padding:16px 20px 12px;position:sticky;top:0;z-index:100;box-shadow:0 2px 12px rgba(26,122,74,.25)}
+.app-header h1{font-size:1.2rem;font-weight:600;letter-spacing:-.01em}
+.app-header p{font-size:.78rem;opacity:.8;margin-top:2px}
+.nav-tabs{display:flex;gap:4px;margin-top:12px}
+.nav-tab{flex:1;padding:7px 4px;border:none;border-radius:8px;background:rgba(255,255,255,.15);color:rgba(255,255,255,.8);font-family:var(--font);font-size:.78rem;font-weight:500;cursor:pointer;transition:all .2s}
+.nav-tab.active{background:#fff;color:var(--green);font-weight:600}
+
+/* ── PAGES ────────────────────────────────────────── */
+.page{display:none;padding:16px;animation:fadeIn .2s ease}
+.page.active{display:block}
+@keyframes fadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+
+/* ── CARDS ────────────────────────────────────────── */
+.card{background:#fff;border-radius:var(--radius);box-shadow:var(--shadow);padding:16px;margin-bottom:14px}
+.card-title{font-size:.85rem;font-weight:600;color:var(--grey);text-transform:uppercase;letter-spacing:.06em;margin-bottom:12px}
+
+/* ── REPAS PAGE ───────────────────────────────────── */
+.search-row{display:flex;gap:8px;align-items:stretch;margin-bottom:8px}
+.search-wrap{flex:1;position:relative}
+.search-input{width:100%;padding:11px 14px 11px 38px;border:1.5px solid var(--border);border-radius:var(--radius-sm);font-family:var(--font);font-size:.95rem;background:#fff;color:#1a2634;outline:none;transition:border-color .2s}
+.search-input:focus{border-color:var(--green)}
+.search-icon{position:absolute;left:11px;top:50%;transform:translateY(-50%);color:var(--grey-m);font-size:1rem;pointer-events:none}
+.qty-input{width:82px;padding:11px 10px;border:1.5px solid var(--border);border-radius:var(--radius-sm);font-family:var(--mono);font-size:1rem;font-weight:500;text-align:center;background:#fffbf0;color:#1a2634;outline:none;transition:border-color .2s}
+.qty-input:focus{border-color:var(--orange)}
+.add-btn{padding:11px 14px;background:var(--green);color:#fff;border:none;border-radius:var(--radius-sm);font-size:1.2rem;cursor:pointer;transition:background .2s}
+.add-btn:active{background:#145e38}
+
+/* Dropdown suggestions */
+.suggestions{position:absolute;top:calc(100% + 4px);left:0;right:0;background:#fff;border:1.5px solid var(--green);border-radius:var(--radius-sm);box-shadow:0 8px 24px rgba(0,0,0,.12);z-index:200;max-height:260px;overflow-y:auto;display:none}
+.suggestions.open{display:block}
+.sugg-item{padding:10px 14px;cursor:pointer;display:flex;align-items:center;gap:8px;border-bottom:1px solid #f0f0f0;transition:background .15s}
+.sugg-item:last-child{border-bottom:none}
+.sugg-item:hover,.sugg-item.selected{background:var(--green-l)}
+.sugg-name{font-size:.9rem;font-weight:500;flex:1}
+.sugg-cat{font-size:.75rem;color:var(--grey-m);white-space:nowrap}
+.sugg-dots{display:flex;gap:3px}
+.sugg-dot{width:7px;height:7px;border-radius:50%}
+
+/* Ingredient list */
+.ing-list{display:flex;flex-direction:column;gap:8px}
+.ing-item{background:#fff;border:1.5px solid var(--border);border-radius:var(--radius-sm);overflow:hidden}
+.ing-header{display:flex;align-items:center;gap:10px;padding:10px 12px}
+.ing-name{flex:1;font-size:.9rem;font-weight:500}
+.ing-qty{font-family:var(--mono);font-size:.85rem;color:var(--blue);background:var(--blue-l);padding:3px 8px;border-radius:5px}
+.ing-max{font-size:.75rem;color:var(--grey-m)}
+.ing-del{background:none;border:none;cursor:pointer;color:var(--red);font-size:1.1rem;padding:4px;opacity:.6;transition:opacity .2s}
+.ing-del:hover{opacity:1}
+.ing-fodmap-row{display:flex;padding:4px 12px 10px;gap:5px;flex-wrap:wrap}
+.fodmap-chip{display:flex;align-items:center;gap:3px;padding:3px 7px;border-radius:5px;font-size:.72rem;font-weight:500}
+.fodmap-chip.ok{background:#f0f0f0;color:#999}
+.fodmap-chip.warn{background:var(--orange-l);color:var(--orange)}
+.fodmap-chip.danger{background:var(--red-l);color:var(--red)}
+.fodmap-chip.always{background:var(--red);color:#fff}
+
+/* Résultat global */
+.result-card{border-radius:var(--radius);padding:18px 20px;text-align:center;margin-bottom:14px;transition:all .3s}
+.result-card.empty{background:#f4f6f7;color:var(--grey-m)}
+.result-card.ok{background:var(--green);color:#fff}
+.result-card.warn{background:var(--orange);color:#fff}
+.result-card.bad{background:var(--red);color:#fff}
+.result-emoji{font-size:2rem;display:block;margin-bottom:6px}
+.result-text{font-size:1.05rem;font-weight:600}
+.result-sub{font-size:.82rem;opacity:.85;margin-top:4px}
+
+/* Totaux FODMAP */
+.totaux-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.total-cell{border-radius:var(--radius-sm);padding:10px 8px;text-align:center}
+.total-cell.ok{background:var(--green-l)}
+.total-cell.warn{background:var(--orange-l)}
+.total-cell.bad{background:var(--red-l)}
+.total-name{font-size:.7rem;font-weight:600;color:var(--grey);text-transform:uppercase;letter-spacing:.04em}
+.total-pct{font-size:1.3rem;font-weight:600;margin:4px 0 2px;line-height:1}
+.total-pct.ok{color:var(--green)}
+.total-pct.warn{color:var(--orange)}
+.total-pct.bad{color:var(--red)}
+.total-bar{height:4px;border-radius:2px;background:#e0e6ea;overflow:hidden;margin-top:4px}
+.total-bar-fill{height:100%;border-radius:2px;transition:width .4s}
+.total-bar-fill.ok{background:var(--green)}
+.total-bar-fill.warn{background:var(--orange)}
+.total-bar-fill.bad{background:var(--red)}
+
+/* Reset btn */
+.reset-btn{width:100%;padding:11px;background:#f4f6f7;border:1.5px solid var(--border);border-radius:var(--radius-sm);font-family:var(--font);font-size:.9rem;color:var(--grey-m);cursor:pointer;transition:all .2s}
+.reset-btn:hover{background:var(--red-l);color:var(--red);border-color:var(--red)}
+
+/* ── BASE DE DONNÉES PAGE ─────────────────────────── */
+.db-search{width:100%;padding:11px 14px 11px 38px;border:1.5px solid var(--border);border-radius:var(--radius-sm);font-family:var(--font);font-size:.9rem;background:#fff;outline:none;transition:border-color .2s;margin-bottom:12px}
+.db-search:focus{border-color:var(--blue)}
+.db-search-wrap{position:relative;margin-bottom:10px}
+.db-search-icon{position:absolute;left:11px;top:50%;transform:translateY(-50%);color:var(--grey-m)}
+
+.cat-filter{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:12px}
+.cat-btn{padding:5px 10px;border:1.5px solid var(--border);border-radius:20px;background:#fff;font-family:var(--font);font-size:.75rem;cursor:pointer;transition:all .2s;white-space:nowrap}
+.cat-btn.active{background:var(--blue);color:#fff;border-color:var(--blue)}
+
+.db-table{display:flex;flex-direction:column;gap:6px}
+.db-row{background:#fff;border:1.5px solid var(--border);border-radius:var(--radius-sm);overflow:hidden}
+.db-row-header{display:flex;align-items:center;gap:8px;padding:10px 12px;cursor:pointer}
+.db-row-header:hover{background:#f8fafb}
+.db-nom{flex:1;font-size:.88rem;font-weight:500}
+.db-cat-tag{font-size:.7rem;color:var(--grey-m);background:#f0f0f0;padding:2px 7px;border-radius:4px;white-space:nowrap}
+.db-max{font-family:var(--mono);font-size:.78rem;color:var(--blue);margin-left:4px;white-space:nowrap}
+.db-dots{display:flex;gap:3px}
+.db-dot{width:8px;height:8px;border-radius:50%}
+.db-dot.present{background:var(--orange)}
+.db-dot.absent{background:#e0e6ea}
+.db-dot.always{background:var(--red)}
+.db-expand{display:none;padding:0 12px 12px;border-top:1px solid var(--border)}
+.db-expand.open{display:block}
+.db-edit-form{display:flex;flex-direction:column;gap:8px;margin-top:10px}
+.db-edit-row{display:flex;align-items:center;gap:8px}
+.db-edit-label{font-size:.8rem;color:var(--grey-m);width:90px;flex-shrink:0}
+.db-edit-input{flex:1;padding:7px 10px;border:1.5px solid var(--border);border-radius:6px;font-family:var(--mono);font-size:.9rem}
+.db-edit-input:focus{outline:none;border-color:var(--blue)}
+.fodmap-checkboxes{display:flex;gap:8px;flex-wrap:wrap}
+.fodmap-cb{display:flex;align-items:center;gap:4px;font-size:.78rem;font-weight:500;cursor:pointer}
+.fodmap-cb input{width:14px;height:14px;accent-color:var(--orange);cursor:pointer}
+.db-edit-btns{display:flex;gap:6px;margin-top:4px}
+.btn-save{flex:1;padding:9px;background:var(--green);color:#fff;border:none;border-radius:6px;font-family:var(--font);font-size:.85rem;font-weight:500;cursor:pointer}
+.btn-del{padding:9px 14px;background:var(--red-l);color:var(--red);border:none;border-radius:6px;font-family:var(--font);font-size:.85rem;cursor:pointer}
+.btn-cancel{padding:9px 14px;background:#f0f0f0;color:var(--grey);border:none;border-radius:6px;font-family:var(--font);font-size:.85rem;cursor:pointer}
+
+/* Ajout nouvel aliment */
+.add-aliment-form{background:var(--blue-l);border:1.5px solid var(--blue);border-radius:var(--radius-sm);padding:14px;margin-bottom:14px;display:none}
+.add-aliment-form.open{display:block}
+.btn-add-open{width:100%;padding:11px;background:var(--blue);color:#fff;border:none;border-radius:var(--radius-sm);font-family:var(--font);font-size:.9rem;font-weight:500;cursor:pointer;margin-bottom:12px}
+
+/* ── LÉGENDE PAGE ─────────────────────────────────── */
+.legend-item{display:flex;gap:12px;align-items:flex-start;margin-bottom:14px}
+.legend-dot{width:14px;height:14px;border-radius:50%;flex-shrink:0;margin-top:3px}
+.legend-text h4{font-size:.9rem;font-weight:600;margin-bottom:3px}
+.legend-text p{font-size:.82rem;color:var(--grey-m);line-height:1.4}
+
+.fodmap-legend{border-radius:var(--radius-sm);overflow:hidden;border:1px solid var(--border)}
+.fl-row{display:flex;align-items:center;gap:10px;padding:10px 12px;border-bottom:1px solid var(--border)}
+.fl-row:last-child{border-bottom:none}
+.fl-color{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+.fl-name{font-size:.85rem;font-weight:600;width:90px;flex-shrink:0}
+.fl-desc{font-size:.78rem;color:var(--grey-m);line-height:1.3}
+
+/* ── UTILITAIRES ──────────────────────────────────── */
+.badge-count{background:rgba(255,255,255,.2);color:#fff;font-size:.7rem;padding:1px 6px;border-radius:10px;margin-left:5px}
+.section-title{font-size:.78rem;font-weight:600;color:var(--grey-m);text-transform:uppercase;letter-spacing:.06em;margin:16px 0 8px;padding-left:2px}
+.highlight{background:var(--green-l);color:var(--green);border-radius:2px;padding:0 2px}
+.empty-state{text-align:center;padding:32px 20px;color:var(--grey-m)}
+.empty-state .es-icon{font-size:2.5rem;display:block;margin-bottom:8px}
+.empty-state p{font-size:.88rem}
+
+/* ── SETUP TOKEN ─────────────────────────────────── */
+.setup-overlay{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:500;
+  display:flex;align-items:center;justify-content:center;padding:20px}
+.setup-card{background:#fff;border-radius:var(--radius);padding:24px;max-width:380px;width:100%;
+  box-shadow:0 8px 40px rgba(0,0,0,.2)}
+.setup-title{font-size:1.1rem;font-weight:600;color:var(--green);margin-bottom:8px}
+.setup-desc{font-size:.82rem;color:var(--grey-m);line-height:1.5;margin-bottom:16px}
+.setup-input{width:100%;padding:10px 12px;border:1.5px solid var(--border);border-radius:8px;
+  font-family:var(--mono);font-size:.82rem;margin-bottom:8px;outline:none}
+.setup-input:focus{border-color:var(--green)}
+.setup-btn{width:100%;padding:12px;background:var(--green);color:#fff;border:none;
+  border-radius:8px;font-family:var(--font);font-size:.95rem;font-weight:600;cursor:pointer}
+.setup-skip{width:100%;padding:8px;background:none;color:var(--grey-m);border:none;
+  font-family:var(--font);font-size:.82rem;cursor:pointer;margin-top:6px;text-decoration:underline}
+
+/* ── TOAST ────────────────────────────────────────── */
+.toast{position:fixed;bottom:90px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--grey);color:#fff;padding:10px 20px;border-radius:30px;font-size:.85rem;font-weight:500;opacity:0;transition:all .3s;pointer-events:none;z-index:999;white-space:nowrap}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+/* ── MOBILE BOTTOM NAV ────────────────────────────── */
+@media(max-width:500px){
+  body{font-size:14px}
+  .totaux-grid{grid-template-columns:repeat(2,1fr)}
+}
+/* ── FILTRE FODMAP (base données) ────────────────── */
+.fodmap-filter{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:10px}
+.fodmap-filter-btn{padding:4px 10px;border:1.5px solid var(--border);border-radius:20px;
+  background:#fff;font-family:var(--font);font-size:.75rem;cursor:pointer;transition:all .2s;white-space:nowrap}
+.fodmap-filter-btn.active{color:#fff;border-color:transparent;font-weight:600}
+
+/* ── PHASE 3 ──────────────────────────────────────── */
+.phase3-bar{background:var(--blue-l);border:1.5px solid var(--blue);border-radius:var(--radius-sm);
+  padding:12px 14px;margin-bottom:12px}
+.phase3-title{font-size:.82rem;font-weight:600;color:var(--blue);margin-bottom:8px}
+.phase3-chips{display:flex;flex-wrap:wrap;gap:6px}
+.phase3-chip{display:flex;align-items:center;gap:5px;padding:5px 10px;border-radius:20px;
+  font-size:.78rem;font-weight:500;border:1.5px solid;cursor:pointer;transition:all .2s;user-select:none}
+.phase3-chip.excluded{opacity:.45;text-decoration:line-through}
+.phase3-hint{font-size:.75rem;color:var(--grey-m);margin-top:8px;font-style:italic}
+
+/* ── UNITÉS ───────────────────────────────────────── */
+.unit-row{display:flex;gap:6px;align-items:center;margin-top:6px}
+.unit-label{font-size:.78rem;color:var(--grey-m);flex-shrink:0}
+.unit-btn{padding:5px 10px;border:1.5px solid var(--border);border-radius:6px;background:#fff;font-family:var(--font);font-size:.78rem;cursor:pointer;transition:all .15s;color:var(--grey)}
+.unit-btn.active{background:var(--orange);color:#fff;border-color:var(--orange);font-weight:600}
+.unit-hint{font-size:.72rem;color:var(--grey-m);margin-left:4px;font-style:italic}
+.qty-wrap{display:flex;flex-direction:column;gap:3px}
+
+/* ── GESTION CATÉGORIES ───────────────────────────── */
+.cats-manage{background:var(--blue-l);border:1.5px solid var(--blue);border-radius:var(--radius-sm);padding:14px;margin-bottom:14px;display:none}
+.cats-manage.open{display:block}
+.cats-list{display:flex;flex-direction:column;gap:6px;margin:10px 0}
+.cat-manage-row{display:flex;align-items:center;gap:6px;background:#fff;padding:7px 10px;border-radius:6px;border:1px solid var(--border)}
+.cat-manage-name{flex:1;font-size:.88rem}
+.cat-edit-inp{flex:1;padding:5px 8px;border:1.5px solid var(--border);border-radius:5px;font-family:var(--font);font-size:.85rem}
+.cat-edit-inp:focus{outline:none;border-color:var(--blue)}
+.btn-cat-edit{padding:4px 10px;background:var(--blue-l);color:var(--blue);border:none;border-radius:5px;font-size:.78rem;cursor:pointer}
+.btn-cat-del{padding:4px 8px;background:var(--red-l);color:var(--red);border:none;border-radius:5px;font-size:.78rem;cursor:pointer}
+.btn-cat-save{padding:4px 10px;background:var(--green);color:#fff;border:none;border-radius:5px;font-size:.78rem;cursor:pointer}
+.btn-cats-open{width:100%;padding:9px;background:#fff;color:var(--blue);border:1.5px solid var(--blue);border-radius:var(--radius-sm);font-family:var(--font);font-size:.85rem;cursor:pointer;margin-bottom:8px}
+.new-cat-row{display:flex;gap:6px;margin-top:8px}
+.new-cat-inp{flex:1;padding:7px 10px;border:1.5px solid var(--border);border-radius:6px;font-family:var(--font);font-size:.85rem}
+.new-cat-inp:focus{outline:none;border-color:var(--blue)}
+
+</style>
+</head>
+<body>
+
+<!-- ════ SETUP TOKEN (premier lancement) ════ -->
+<div class="setup-overlay" id="setup-overlay" style="display:none">
+  <div class="setup-card">
+    <div class="setup-title">🔐 Configuration synchronisation</div>
+    <div class="setup-desc">
+      Pour synchroniser vos données entre vos appareils, collez votre token GitHub ci-dessous.<br><br>
+      Il sera stocké <strong>uniquement sur cet appareil</strong>, jamais dans le code en ligne.
+    </div>
+    <input class="setup-input" id="setup-token-input" type="password"
+           placeholder="ghp_xxxxxxxxxxxxxxxxxxxx"
+           autocomplete="off" autocorrect="off" spellcheck="false">
+    <div id="setup-error" style="color:var(--red);font-size:.78rem;min-height:18px;margin-bottom:8px"></div>
+    <button class="setup-btn" onclick="validateAndSaveToken()">✅ Activer la synchronisation</button>
+    <button class="setup-skip" onclick="skipSetup()">Ignorer — utiliser sans synchronisation</button>
+  </div>
+</div>
+
+<header class="app-header">
+  <h1>🥦 Analyseur FODMAP</h1>
+  <p>Végétarien · Source Monash University · <span id="sync-status" style="font-size:.75rem"></span></p>
+  <div class="nav-tabs">
+    <button class="nav-tab active" onclick="goPage('repas')">🍽️ Mon repas</button>
+    <button class="nav-tab" onclick="goPage('base')">📋 Base données</button>
+    <button class="nav-tab" onclick="goPage('aide')">ℹ️ Aide</button>
+  </div>
+</header>
+
+<div class="toast" id="toast"></div>
+
+<!-- ════════════════════════════════════════════════ -->
+<!-- PAGE REPAS                                       -->
+<!-- ════════════════════════════════════════════════ -->
+<div class="page active" id="page-repas">
+
+  <!-- Phase 3 : FODMAPs tolérés -->
+  <div class="phase3-bar" id="phase3-bar">
+    <div class="phase3-title">⚙️ Phase 3 — FODMAPs à ignorer (cliquer pour désactiver)</div>
+    <div class="phase3-chips" id="phase3-chips"></div>
+    <div class="phase3-hint">Les FODMAPs désactivés ne sont pas comptabilisés dans l'analyse</div>
+  </div>
+  <button onclick="togglePhase3()" id="phase3-toggle-btn"
+    style="width:100%;padding:8px;background:#fff;color:var(--blue);border:1.5px solid var(--blue);
+    border-radius:var(--radius-sm);font-family:var(--font);font-size:.82rem;cursor:pointer;margin-bottom:10px">
+    ⚙️ Afficher les réglages Phase 3
+  </button>
+
+  <!-- Résultat global -->
+  <div class="result-card empty" id="result-card">
+    <span class="result-emoji">☝️</span>
+    <div class="result-text">Ajoutez des ingrédients</div>
+    <div class="result-sub">Tapez un aliment ci-dessous</div>
+  </div>
+
+  <!-- Totaux par FODMAP -->
+  <div class="card" id="totaux-card" style="display:none">
+    <div class="card-title">Cumul par FODMAP</div>
+    <div class="totaux-grid" id="totaux-grid"></div>
+  </div>
+
+  <!-- Saisie ingrédient -->
+  <div class="card">
+    <div class="card-title">Ajouter un ingrédient</div>
+    <div class="search-row">
+      <div class="search-wrap">
+        <span class="search-icon">🔍</span>
+        <input type="text" class="search-input" id="search-input"
+               placeholder="Tapez un aliment… (kiwi, tomate…)"
+               autocomplete="off" autocorrect="off" spellcheck="false"
+               oninput="onSearch(this.value)"
+               onkeydown="onSearchKey(event)">
+        <div class="suggestions" id="suggestions"></div>
+      </div>
+      <div class="qty-wrap">
+        <input type="number" class="qty-input" id="qty-input"
+               placeholder="qté" min="0.1" max="9999" step="0.5"
+               onkeydown="if(event.key==='Enter')addIngredient()">
+        <div class="unit-row">
+          <span class="unit-label">Unité :</span>
+          <button class="unit-btn active" onclick="setUnit('g')" id="unit-g">g</button>
+          <button class="unit-btn" onclick="setUnit('u')" id="unit-u">unité</button>
+          <button class="unit-btn" onclick="setUnit('cs')" id="unit-cs">cs</button>
+          <button class="unit-btn" onclick="setUnit('cc')" id="unit-cc">cc</button>
+        </div>
+      </div>
+      <button class="add-btn" onclick="addIngredient()" title="Ajouter">+</button>
+    </div>
+    <div id="unit-hint-bar" style="font-size:.75rem;color:var(--grey-m);margin:-4px 0 8px;padding-left:2px;min-height:16px"></div>
+
+    <!-- Liste des ingrédients -->
+    <div class="section-title" id="ing-label" style="display:none">Ingrédients du repas</div>
+    <div class="ing-list" id="ing-list"></div>
+
+    <button class="reset-btn" onclick="resetRepas()" style="margin-top:12px">
+      🗑️ Effacer le repas
+    </button>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════════ -->
+<!-- PAGE BASE DE DONNÉES                             -->
+<!-- ════════════════════════════════════════════════ -->
+<div class="page" id="page-base">
+
+  <!-- Ajout nouvel aliment -->
+  <div style="display:flex;gap:8px;margin-bottom:8px">
+    <button onclick="showTokenSetup()" style="flex:1;padding:9px;background:#fff;color:var(--green);border:1.5px solid var(--green);border-radius:var(--radius-sm);font-family:var(--font);font-size:.82rem;cursor:pointer" id="token-btn">🔐 Token sync</button>
+  </div>
+  <div style="display:flex;gap:8px;margin-bottom:8px">
+    <button class="btn-cats-open" onclick="toggleCatManage()" style="flex:1">⚙️ Catégories</button>
+    <button onclick="exportDB()" style="flex:1;padding:9px;background:#fff;color:var(--blue);border:1.5px solid var(--blue);border-radius:var(--radius-sm);font-family:var(--font);font-size:.82rem;cursor:pointer">💾 Exporter</button>
+    <button onclick="importDB()" style="flex:1;padding:9px;background:#fff;color:var(--orange);border:1.5px solid var(--orange);border-radius:var(--radius-sm);font-family:var(--font);font-size:.82rem;cursor:pointer">📂 Importer</button>
+  </div>
+  <button class="btn-cats-open" onclick="toggleCatManage()">⚙️ Gérer les catégories</button>
+  <div class="cats-manage" id="cats-manage">
+    <div class="card-title" style="margin-bottom:8px">Catégories</div>
+    <div class="cats-list" id="cats-list"></div>
+    <div class="new-cat-row">
+      <input class="new-cat-inp" id="new-cat-inp" placeholder="Nouvelle catégorie…" onkeydown="if(event.key==='Enter')addCat()">
+      <button class="btn-save" onclick="addCat()" style="white-space:nowrap">＋ Ajouter</button>
+    </div>
+  </div>
+  <button class="btn-add-open" onclick="toggleAddForm()">＋ Ajouter un nouvel aliment</button>
+  <div class="add-aliment-form" id="add-form">
+    <div class="db-edit-form">
+      <div class="db-edit-row">
+        <span class="db-edit-label">Nom</span>
+        <input class="db-edit-input" id="new-nom" placeholder="Ex: Fenouil" style="flex:1">
+      </div>
+      <div class="db-edit-row">
+        <span class="db-edit-label">Catégorie</span>
+        <select class="db-edit-input" id="new-cat" id="new-cat-sel"></select>
+      </div>
+      <div class="db-edit-row">
+        <span class="db-edit-label">Portion max</span>
+        <input class="db-edit-input" id="new-max" type="number" placeholder="999=illimité / 0=toujours riche">
+      </div>
+      <div class="db-edit-row">
+        <span class="db-edit-label">FODMAPs</span>
+        <div class="fodmap-checkboxes" id="new-fodmaps"></div>
+      </div>
+      <div class="db-edit-btns">
+        <button class="btn-save" onclick="addNewAliment()">✅ Enregistrer</button>
+        <button class="btn-cancel" onclick="toggleAddForm()">Annuler</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Recherche + filtres -->
+  <!-- Filtre par FODMAP -->
+  <div class="fodmap-filter" id="fodmap-filter"></div>
+  <div class="db-search-wrap">
+    <span class="db-search-icon">🔍</span>
+    <input type="text" class="db-search" id="db-search"
+           placeholder="Rechercher dans la base…"
+           oninput="renderDB()">
+  </div>
+  <div class="cat-filter" id="cat-filter"></div>
+
+  <div class="db-table" id="db-table"></div>
+</div>
+
+<!-- ════════════════════════════════════════════════ -->
+<!-- PAGE AIDE                                        -->
+<!-- ════════════════════════════════════════════════ -->
+<div class="page" id="page-aide">
+  <div class="card">
+    <div class="card-title">Comment utiliser</div>
+    <div class="legend-item">
+      <div class="legend-dot" style="background:var(--green)"></div>
+      <div class="legend-text"><h4>Tapez un ingrédient</h4><p>Écrivez quelques lettres, la liste filtrée apparaît. Sélectionnez l'aliment et entrez la quantité en grammes.</p></div>
+    </div>
+    <div class="legend-item">
+      <div class="legend-dot" style="background:var(--orange)"></div>
+      <div class="legend-text"><h4>Lisez le cumul</h4><p>Chaque FODMAP est cumulé sur tous les ingrédients. Si le total dépasse 100%, ce FODMAP est en excès.</p></div>
+    </div>
+    <div class="legend-item">
+      <div class="legend-dot" style="background:var(--blue)"></div>
+      <div class="legend-text"><h4>Modifiez la base</h4><p>Onglet « Base données » : cliquez sur un aliment pour le modifier ou le supprimer. Les données sont sauvegardées localement sur votre appareil.</p></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Les 6 familles FODMAP</div>
+    <div class="fodmap-legend">
+      <div class="fl-row"><div class="fl-color" style="background:#c0392b"></div><div class="fl-name">Fructose</div><div class="fl-desc">Sucre simple. Sources : certains fruits, miel, concentré tomate. Problématique en excès vs glucose.</div></div>
+      <div class="fl-row"><div class="fl-color" style="background:#2471a3"></div><div class="fl-name">Lactose</div><div class="fl-desc">Sucre du lait. Mal digéré sans lactase. Les fromages affinés en sont exempts.</div></div>
+      <div class="fl-row"><div class="fl-color" style="background:#7d3c98"></div><div class="fl-name">Fructanes</div><div class="fl-desc">Chaînes de fructose (Oligos). Sources : blé, ail, oignon, poireau blanc, courgette, asperges…</div></div>
+      <div class="fl-row"><div class="fl-color" style="background:#1e8449"></div><div class="fl-name">GOS</div><div class="fl-desc">Galacto-oligosaccharides (Oligos). Sources : légumineuses, certains choux, amandes, noix cajou…</div></div>
+      <div class="fl-row"><div class="fl-color" style="background:#b7950b"></div><div class="fl-name">Sorbitol</div><div class="fl-desc">Polyol. Sources : pomme, poire, pêche, cerise, abricot, prune, avocat, céleri, maïs, chou-fleur…</div></div>
+      <div class="fl-row"><div class="fl-color" style="background:#784212"></div><div class="fl-name">Mannitol</div><div class="fl-desc">Polyol. Sources : céleri, aubergine, haricots verts, patate douce, courge, mange-tout…</div></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Logique de cumul</div>
+    <p style="font-size:.85rem;line-height:1.6;color:var(--grey-m)">
+      Si deux ingrédients contiennent tous deux des <strong>Fructanes</strong>, leurs proportions s'additionnent. Ex : pâtes de blé 100g (max 145g = 69%) + flocons d'avoine 30g (max 52g = 58%) → total Fructanes = <strong>127% ❌</strong>.<br><br>
+      Objectif : chaque colonne FODMAP reste sous <strong>100%</strong> pour l'ensemble du repas.<br><br>
+      Source des données : <strong>Monash University Low FODMAP App</strong> (v2024).
+    </p>
+  </div>
+
+  <div class="card">
+    <div class="card-title">⚠️ Avertissement</div>
+    <p style="font-size:.82rem;line-height:1.5;color:var(--grey-m)">
+      Cet outil est indicatif. Les données FODMAP peuvent varier selon la maturité, la cuisson, la variété. Certaines informations peuvent être absentes de la version gratuite de l'app Monash. Consultez un(e) diététicien(ne) spécialisé(e) pour un suivi personnalisé.
+    </p>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════
+// BASE DE DONNÉES — Source : Monash University PDF
+// Format : {n:nom, c:catégorie, m:portionMax, f:[Fru,Lac,Fra,GOS,Sor,Man]}
+// m=999:illimité/sans FODMAP | m=0:toujours riche (rouge)
+// FODMAP: 0=absent, 1=présent jusqu'à portion max
+// ═══════════════════════════════════════════════════
+const DB_DEFAULT = [
+  // ── LÉGUMES (source PDF Monash) ──────────────────
+  {n:"Carotte",c:"Légume",m:999,f:[0,0,0,0,0,0],u:80,cs:0},
+  {n:"Carotte (cuite)",c:"Légume",m:999,f:[0,0,0,0,0,0],u:80,cs:0},
+  {n:"Courgette",c:"Légume",m:65,f:[0,0,1,0,0,0],u:200,cs:0},        // Oligos (fructanes) — PDF p3
+  {n:"Pomme de terre",c:"Légume",m:999,f:[0,0,0,0,0,0],u:130,cs:0},
+  {n:"Tomate (fraîche)",c:"Légume",m:65,f:[0,0,1,0,0,0],u:120,cs:0}, // FREE use — PDF p3
+  {n:"Tomate cerise",c:"Légume",m:45,f:[0,0,1,0,0,0],u:15,cs:0},     // Oligos — PDF p3
+  {n:"Tomate en boîte",c:"Légume",m:100,f:[0,0,1,0,0,0],u:0,cs:0},   // Fructose — PDF p3
+  {n:"Tomate roma",c:"Légume",m:46,f:[0,0,1,0,0,0],u:0,cs:0},       // Fructose — PDF p3
+  {n:"Concombre",c:"Légume",m:999,f:[0,0,0,0,0,0],u:0,cs:0},
+  {n:"Laitue (iceberg/romaine/beurre)",c:"Légume",m:999,f:[0,0,0,0,0,0],u:0,cs:0},
+  {n:"Épinards (frais/bébé)",c:"Légume",m:38,f:[0,0,1,0,0,0],u:0,cs:0},  // Oligos, max 38g — PDF p3
+  {n:"Épinards (cuits)",c:"Légume",m:250,f:[0,0,1,0,0,0],u:0,cs:0},
+  {n:"Poivron rouge",c:"Légume",m:40,f:[0,0,1,0,0,0],u:160,cs:0},    // FREE — PDF p3
+  {n:"Poivron vert",c:"Légume",m:52,f:[0,0,0,0,0,1],u:160,cs:0},      // Polyols (mannitol) — PDF p3
+  {n:"Poivron jaune",c:"Légume",m:35,f:[0,0,1,0,0,0],u:160,cs:0},
+  {n:"Haricots verts",c:"Légume",m:75,f:[0,0,0,0,0,1],u:0,cs:0},    // Polyols (mannitol) max 86g — PDF p3
+  {n:"Brocoli",c:"Légume",m:47,f:[0,0,1,1,0,0],u:300,cs:0},           // Oligos+Polyols, max 47g — PDF p3
+  {n:"Chou-fleur",c:"Légume",m:0,f:[0,0,0,0,0,1],u:700,cs:0},         // RED 0g, Polyols — PDF p3
+  {n:"Chou kale",c:"Légume",m:999,f:[0,0,0,0,0,0],u:300,cs:0},        // FREE — PDF p3
+  {n:"Chou blanc",c:"Légume",m:75,f:[0,0,0,1,0,0],u:0,cs:0},        // Polyols, max 94g — PDF p3
+  {n:"Chou rouge",c:"Légume",m:75,f:[0,0,1,0,0,0],u:0,cs:0},        // Oligos — PDF p3
+  {n:"Chou de Savoie",c:"Légume",m:35,f:[0,0,1,0,0,0],u:0,cs:0},    // Oligos — PDF p3
+  {n:"Choux de Bruxelles",c:"Légume",m:75,f:[0,0,1,0,0,0],u:0,cs:0},// Oligos, max 38g — PDF p3
+  {n:"Céleri (branche)",c:"Légume",m:12,f:[0,0,0,0,1,1],u:40,cs:0},  // Polyols (mannitol), max 12g — PDF p3
+  {n:"Céleri-rave",c:"Légume",m:75,f:[0,0,0,0,0,1],u:0,cs:0},      // FREE — PDF p3
+  {n:"Champignons de Paris (frais)",c:"Légume",m:0,f:[0,0,0,1,0,0],u:15,cs:0}, // RED 0g — PDF p3
+  {n:"Champignons en boîte",c:"Légume",m:75,f:[0,0,0,1,0,0],u:15,cs:0},       // Polyols, max 110g — PDF p3
+  {n:"Shiitake séché",c:"Légume",m:7,f:[0,0,0,0,0,1],u:0,cs:0},     // Polyols, max 7g — PDF p3
+  {n:"Champignon huître",c:"Légume",m:999,f:[0,0,0,0,0,0],u:0,cs:0},
+  {n:"Maïs doux",c:"Légume",m:43,f:[0,0,1,0,0,1],u:200,cs:0},         // Oligos+Polyols, max 43g — PDF p3
+  {n:"Maïs en boîte (rincé)",c:"Légume",m:75,f:[0,0,1,0,0,1],u:0,cs:0},
+  {n:"Patate douce",c:"Légume",m:75,f:[0,0,0,0,0,1],u:130,cs:0},      // Polyols, max 70g — PDF p3
+  {n:"Aubergine",c:"Légume",m:41,f:[0,0,0,0,0,1],u:300,cs:0},         // Polyols (mannitol), max 41g — PDF p3
+  {n:"Betterave",c:"Légume",m:75,f:[0,0,1,0,0,0],u:100,cs:0},         // Oligos, max 20g — PDF p3
+  {n:"Courge butternut",c:"Légume",m:60,f:[0,0,1,1,0,0],u:900,cs:0},  // Oligos+Polyols, max 30g — PDF p3
+  {n:"Fenouil (bulbe)",c:"Légume",m:75,f:[0,0,1,0,0,0],u:250,cs:0},   // Oligos+Polyols — à vérifier
+  {n:"Poireau (partie verte)",c:"Légume",m:28,f:[0,0,0,0,0,1],u:0,cs:0}, // Polyols, max 28g — PDF p3
+  {n:"Poireau (bulbe/blanc)",c:"Légume",m:0,f:[0,0,1,0,0,0],u:0,cs:0},   // RED — PDF p3
+  {n:"Radis",c:"Légume",m:999,f:[0,0,0,0,0,0],u:0,cs:0},
+  {n:"Roquette",c:"Légume",m:999,f:[0,0,0,0,0,0],u:0,cs:0},
+  {n:"Mâche",c:"Légume",m:999,f:[0,0,0,0,0,0],u:0,cs:0},
+  {n:"Blette / Bette",c:"Légume",m:999,f:[0,0,0,0,0,0],u:0,cs:0},
+  {n:"Endive (bulbe)",c:"Légume",m:49,f:[0,0,1,0,0,0],u:100,cs:0},    // Oligos — PDF p3
+  {n:"Potiron / Potimarron",c:"Légume",m:75,f:[0,0,0,0,0,1],u:1500,cs:0}, // Oligos (pumpkin canned) — PDF p3
+  {n:"Pak choï / Bok choy",c:"Légume",m:85,f:[0,0,0,0,0,1],u:400,cs:0}, // Polyols — PDF p3
+  {n:"Asperges",c:"Légume",m:0,f:[0,1,0,0,0,0],u:20,cs:0},           // RED Fructose uniquement — PDF p3
+  {n:"Navet",c:"Légume",m:65,f:[0,0,0,0,0,1],u:150,cs:0},             // Polyols — PDF p3
+  {n:"Panais",c:"Légume",m:999,f:[0,0,0,0,0,0],u:130,cs:0},
+  {n:"Artichaut (cœur en boîte)",c:"Légume",m:28,f:[0,1,0,0,0,0],u:30,cs:0}, // Fructose — PDF p3
+  {n:"Artichaut (globe)",c:"Légume",m:0,f:[0,0,1,0,0,0],u:350,cs:0},  // RED Oligos — PDF p3
+  {n:"Broccolini",c:"Légume",m:999,f:[0,0,0,0,0,0],u:120,cs:0},
+  {n:"Citrouille (japonaise)",c:"Légume",m:999,f:[0,0,0,0,0,0],u:0,cs:0},
+  {n:"Avocat",c:"Légume",m:20,f:[0,0,0,0,1,0],u:150,cs:0},            // Sorbitol, max 20g — PDF p4
+  {n:"Maïs (flocons, sans gluten)",c:"Légume",m:999,f:[0,0,0,0,0,0],u:0,cs:0},
+  {n:"Mange-tout",c:"Légume",m:17,f:[0,0,1,0,0,1],u:0,cs:0},        // Oligos+Polyols — PDF p3
+
+  // ── FRUITS ──────────────────────────────────────
+  {n:"Banane (mûre)",c:"Fruit",m:56,f:[0,1,0,0,0,0],u:100,cs:0},      // Fructose à partir, max 56g — PDF p4
+  {n:"Banane (peu mûre / ferme)",c:"Fruit",m:999,f:[0,0,0,0,0,0],u:100,cs:0}, // FREE — PDF p4
+  {n:"Fraise",c:"Fruit",m:999,f:[0,0,0,0,0,0],u:15,cs:0},            // FREE — PDF p4
+  {n:"Framboise",c:"Fruit",m:999,f:[0,0,0,0,0,0],u:5,cs:0},          // Oligos, max 45g — PDF p4
+  {n:"Myrtille (européenne)",c:"Fruit",m:999,f:[0,0,0,0,0,0],u:1,cs:0}, // Oligos, max 20g — PDF p4
+  {n:"Bleuet (américain)",c:"Fruit",m:999,f:[0,0,0,0,0,0],u:1,cs:0},
+  {n:"Kiwi (vert)",c:"Fruit",m:999,f:[0,0,0,0,0,0],u:80,cs:0},       // Oligos, max 150g — PDF p4
+  {n:"Kiwi (gold/jaune)",c:"Fruit",m:999,f:[0,0,0,0,0,0],u:80,cs:0}, // FREE — PDF p4
+  {n:"Orange (navel)",c:"Fruit",m:999,f:[0,0,0,0,0,0],u:150,cs:0},    // FREE — PDF p4
+  {n:"Mandarine / Clémentine",c:"Fruit",m:999,f:[0,0,0,0,0,0],u:70,cs:0}, // FREE — PDF p4
+  {n:"Citron (jus)",c:"Fruit",m:999,f:[0,0,0,0,0,0],u:0,cs:0},
+  {n:"Citron vert / Lime (jus)",c:"Fruit",m:999,f:[0,0,0,0,0,0],u:0,cs:0},
+  {n:"Pamplemousse",c:"Fruit",m:999,f:[0,0,0,0,0,0],u:250,cs:0},        // RED Oligos — PDF p4
+  {n:"Raisin (thompson / rouge)",c:"Fruit",m:10,f:[0,0,1,0,0,0],u:0,cs:0}, // FREE — PDF p4
+  {n:"Ananas",c:"Fruit",m:999,f:[0,0,0,0,0,0],u:900,cs:0},            // Oligos, max 140g — PDF p4
+  {n:"Papaye / Paw paw",c:"Fruit",m:999,f:[0,0,0,0,0,0],u:400,cs:0},  // FREE — PDF p4
+  {n:"Mangue",c:"Fruit",m:0,f:[0,0,1,0,0,0],u:0,cs:0},              // RED Fructose — PDF p4
+  {n:"Pastèque",c:"Fruit",m:0,f:[0,0,1,0,0,0],u:2000,cs:0},            // RED Fructose+Oligos — PDF p4
+  {n:"Melon (Honeydew / jaune)",c:"Fruit",m:90,f:[0,0,1,0,0,0],u:1200,cs:0}, // Oligos, max 90g — PDF p4
+  {n:"Melon Cantaloup",c:"Fruit",m:999,f:[0,0,0,0,0,0],u:900,cs:0},    // Oligos, max 90g — PDF p4
+  {n:"Pêche (jaune)",c:"Fruit",m:0,f:[0,0,0,0,1,0],u:130,cs:0},       // RED Sorbitol — PDF p4
+  {n:"Pêche (blanche)",c:"Fruit",m:0,f:[0,0,1,0,1,0],u:130,cs:0},     // RED Oligos+Sorbitol — PDF p4
+  {n:"Nectarine",c:"Fruit",m:30,f:[0,0,0,0,1,0],u:130,cs:0},           // RED Oligos+Sorbitol — PDF p4
+  {n:"Pomme",c:"Fruit",m:0,f:[0,1,0,0,1,0],u:150,cs:0},               // RED Fructose+Sorbitol — PDF p4
+  {n:"Poire",c:"Fruit",m:0,f:[0,1,0,0,1,0],u:160,cs:0},               // RED Fructose+Sorbitol — PDF p4
+  {n:"Cerise",c:"Fruit",m:20,f:[0,0,1,0,1,0],u:0,cs:0},              // RED Fructose+Sorbitol — PDF p4
+  {n:"Abricot",c:"Fruit",m:60,f:[0,0,0,0,1,0],u:40,cs:0},             // RED Oligos+Sorbitol — PDF p4
+  {n:"Prune",c:"Fruit",m:0,f:[0,0,1,0,1,0],u:0,cs:0},               // RED
+  {n:"Figue (fraîche)",c:"Fruit",m:0,f:[0,1,0,0,0,0],u:0,cs:0},     // RED Fructose — PDF p4
+  {n:"Grenade",c:"Fruit",m:999,f:[0,0,0,0,0,0],u:250,cs:0},            // Oligos, max 38g — PDF p4
+  {n:"Fruit de la passion",c:"Fruit",m:999,f:[0,0,0,0,0,0],u:0,cs:0},// Oligos, max 23g — PDF p4
+  {n:"Litchi",c:"Fruit",m:95,f:[0,0,0,0,1,0],u:15,cs:0},              // RED Sorbitol — PDF p4
+  {n:"Noix de coco (fraîche)",c:"Fruit",m:80,f:[0,0,0,0,1,0],u:400,cs:0}, // Sorbitol, max 48g — PDF p4
+  {n:"Mûre",c:"Fruit",m:0,f:[0,0,0,0,1,0],u:0,cs:0},                // RED Sorbitol — PDF p4
+  {n:"Carambole",c:"Fruit",m:999,f:[0,0,0,0,0,0],u:0,cs:0},
+  {n:"Fruit du dragon",c:"Fruit",m:999,f:[0,0,0,0,0,0],u:0,cs:0},
+  {n:"Plantain (pelé)",c:"Fruit",m:999,f:[0,0,0,0,0,0],u:0,cs:0},
+  {n:"Rhubarbe",c:"Fruit",m:999,f:[0,0,0,0,0,0],u:0,cs:0},
+
+  // ── LÉGUMINEUSES ────────────────────────────────
+  {n:"Tofu ferme",c:"Légumineuse",m:999,f:[0,0,0,0,0,0],u:0,cs:0},  // FREE — PDF p6
+  {n:"Tofu soyeux",c:"Légumineuse",m:40,f:[0,0,0,1,0,0],u:0,cs:0},   // RED Oligos — PDF p6
+  {n:"Tempeh",c:"Légumineuse",m:100,f:[0,0,0,1,0,0],u:0,cs:0},      // Oligos, max 100g — PDF p6
+  {n:"Quorn (mince)",c:"Légumineuse",m:999,f:[0,0,0,0,0,0],u:0,cs:0},// FREE — PDF p6
+  {n:"Edamame / Soja (congelé)",c:"Légumineuse",m:999,f:[0,0,0,0,0,0],u:0,cs:0}, // FREE — PDF p6
+  {n:"Lentilles corail (cuites)",c:"Légumineuse",m:20,f:[0,0,0,1,0,0],u:0,cs:0}, // Oligos, max 23g — PDF p6
+  {n:"Lentilles vertes (cuites)",c:"Légumineuse",m:45,f:[0,0,0,1,0,0],u:0,cs:0}, // Oligos, max 23g — PDF p6
+  {n:"Lentilles (boîte)",c:"Légumineuse",m:999,f:[0,0,0,0,0,0],u:0,cs:0},        // FREE — PDF p6
+  {n:"Pois chiches (boîte, rincés)",c:"Légumineuse",m:80,f:[0,0,0,1,0,0],u:0,cs:0}, // Oligos — PDF p6
+  {n:"Haricots beurre (boîte)",c:"Légumineuse",m:35,f:[0,0,1,0,0,0],u:0,cs:0},   // Oligos — PDF p6
+  {n:"Haricots rouges (cuits)",c:"Légumineuse",m:0,f:[0,0,1,0,0,0],u:0,cs:0},    // RED — PDF p6
+  {n:"Pois cassés (cuits)",c:"Légumineuse",m:125,f:[0,0,1,0,0,0],u:0,cs:0},
+
+  // ── ŒUFS ────────────────────────────────────────
+  {n:"Œuf (toute cuisson)",c:"Œuf",m:999,f:[0,0,0,0,0,0],u:55,cs:0},
+
+  // ── CÉRÉALES ────────────────────────────────────
+  {n:"Riz blanc (cuit)",c:"Céréale",m:999,f:[0,0,0,0,0,0],u:0,cs:0},
+  {n:"Riz complet (cuit)",c:"Céréale",m:999,f:[0,0,0,0,0,0],u:0,cs:0},
+  {n:"Riz basmati",c:"Céréale",m:999,f:[0,0,0,0,0,0],u:0,cs:0},
+  {n:"Quinoa (blanc/rouge/noir)",c:"Céréale",m:999,f:[0,0,0,0,0,0],u:0,cs:0}, // FREE — PDF p2
+  {n:"Flocons d'avoine (fins)",c:"Céréale",m:50,f:[0,0,1,0,0,0],u:0,cs:10},    // Oligos, max 52g — PDF p2
+  {n:"Flocons d'avoine (rapides)",c:"Céréale",m:23,f:[0,0,1,0,0,0],u:0,cs:10}, // Oligos, max 23g — PDF p2
+  {n:"Flocons d'avoine (gros)",c:"Céréale",m:52,f:[0,0,1,0,0,0],u:0,cs:10},    // Oligos, max 60g — PDF p2
+  {n:"Pain au levain (blé)",c:"Céréale",m:110,f:[0,0,1,0,0,0],u:0,cs:0},
+  {n:"Pain sans gluten",c:"Céréale",m:999,f:[0,0,0,0,0,0],u:0,cs:0},
+  {n:"Pâtes de riz (cuites)",c:"Céréale",m:999,f:[0,0,0,0,0,0],u:0,cs:0},
+  {n:"Pâtes de blé (cuites)",c:"Céréale",m:145,f:[0,0,1,0,0,0],u:0,cs:0},
+  {n:"Pâtes sans gluten",c:"Céréale",m:999,f:[0,0,0,0,0,0],u:0,cs:0},
+  {n:"Maïzena / Fécule de maïs",c:"Céréale",m:999,f:[0,0,0,0,0,0],u:0,cs:10},
+  {n:"Farine de riz",c:"Céréale",m:999,f:[0,0,0,0,0,0],u:0,cs:10},
+  {n:"Farine de sarrasin",c:"Céréale",m:999,f:[0,0,0,0,0,0],u:0,cs:10},
+  {n:"Farine de maïs",c:"Céréale",m:999,f:[0,0,0,0,0,0],u:0,cs:10},
+  {n:"Polenta / Semoule de maïs",c:"Céréale",m:999,f:[0,0,0,0,0,0],u:0,cs:0},
+  {n:"Boulgour (cuit)",c:"Céréale",m:44,f:[0,0,1,0,0,0],u:0,cs:0},   // Oligos, max 44g — PDF p2
+  {n:"Millet (grain)",c:"Céréale",m:125,f:[0,0,1,0,0,0],u:0,cs:0},   // Oligos — PDF p2
+  {n:"Son d'avoine",c:"Céréale",m:20,f:[0,0,1,0,0,0],u:0,cs:0},      // Oligos, max 22g — PDF p2
+  {n:"Farine d'amande",c:"Céréale",m:24,f:[0,0,0,1,0,0],u:0,cs:0},   // GOS, max 24g — PDF p2
+  {n:"Riz soufflé",c:"Céréale",m:15,f:[0,0,1,0,0,0],u:0,cs:0},       // Oligos, max 15g — PDF p2
+  {n:"Amarante soufflée",c:"Céréale",m:10,f:[0,0,1,0,0,0],u:0,cs:0}, // Oligos, max 10g — PDF p2
+  {n:"Flocons de maïs (sans gluten)",c:"Céréale",m:999,f:[0,0,0,0,0,0],u:0,cs:0},
+
+  // ── LAITAGES ────────────────────────────────────
+  {n:"Lait de vache",c:"Laitage",m:0,f:[0,0,0,0,0,1],u:0,cs:0},     // RED Lactose — PDF p5
+  {n:"Lait sans lactose",c:"Laitage",m:999,f:[0,0,0,0,0,0],u:0,cs:0},
+  {n:"Lait d'amande",c:"Laitage",m:999,f:[0,0,0,0,0,0],u:0,cs:0},   // FREE — PDF p5
+  {n:"Lait d'avoine",c:"Laitage",m:30,f:[0,0,1,0,0,0],u:0,cs:0},    // Oligos, max 30g — PDF p5
+  {n:"Lait de coco (boîte)",c:"Laitage",m:999,f:[0,0,0,0,0,0],u:0,cs:0}, // FREE — PDF p5
+  {n:"Lait de coco UHT (brique)",c:"Laitage",m:120,f:[0,0,1,0,0,0],u:0,cs:0}, // Oligos, max 120g — PDF p5
+  {n:"Lait de riz",c:"Laitage",m:200,f:[0,0,1,0,0,0],u:0,cs:0},     // Oligos, max 200g — PDF p5
+  {n:"Lait de soja (protéine isolée)",c:"Laitage",m:999,f:[0,0,0,0,0,0],u:0,cs:0}, // FREE — PDF p5
+  {n:"Lait de soja (beans)",c:"Laitage",m:40,f:[0,0,1,0,0,0],u:0,cs:0}, // Oligos, max 40g — PDF p5
+  {n:"Crème de coco",c:"Laitage",m:999,f:[0,0,0,0,0,0],u:0,cs:0},
+  {n:"Eau de coco",c:"Laitage",m:100,f:[0,0,1,0,0,0],u:0,cs:15},      // Oligos+Polyols — PDF p7
+  {n:"Yaourt nature (vache)",c:"Laitage",m:0,f:[0,0,0,0,0,1],u:0,cs:0}, // RED Lactose — PDF p5
+  {n:"Yaourt de chèvre",c:"Laitage",m:999,f:[0,0,0,0,0,0],u:0,cs:0}, // FREE — PDF p5
+  {n:"Yaourt sans lactose",c:"Laitage",m:999,f:[0,0,0,0,0,0],u:0,cs:0},
+  {n:"Yaourt végétal (soja)",c:"Laitage",m:40,f:[0,0,0,1,0,0],u:0,cs:0},
+  {n:"Parmesan",c:"Laitage",m:999,f:[0,0,0,0,0,0],u:0,cs:0},
+  {n:"Cheddar affiné",c:"Laitage",m:999,f:[0,0,0,0,0,0],u:0,cs:0},
+  {n:"Gruyère / Emmental",c:"Laitage",m:999,f:[0,0,0,0,0,0],u:0,cs:0},
+  {n:"Camembert / Brie",c:"Laitage",m:999,f:[0,0,0,0,0,0],u:0,cs:0},  // FREE — PDF p5
+  {n:"Mozzarella",c:"Laitage",m:999,f:[0,0,0,0,0,0],u:0,cs:0},
+  {n:"Feta",c:"Laitage",m:999,f:[0,0,0,0,0,0],u:0,cs:0},             // FREE — PDF p5
+  {n:"Fromage de chèvre (chèvre)",c:"Laitage",m:999,f:[0,0,0,0,0,0],u:0,cs:0}, // FREE — PDF p5
+  {n:"Haloumi",c:"Laitage",m:50,f:[0,0,0,0,0,1],u:0,cs:0},           // Lactose, max 50g — PDF p5
+  {n:"Beurre",c:"Laitage",m:999,f:[0,0,0,0,0,0],u:0,cs:0},
+  {n:"Crème fraîche / liquide",c:"Laitage",m:40,f:[0,0,0,0,0,1],u:0,cs:0}, // RED Lactose — PDF p5
+  {n:"Ricotta",c:"Laitage",m:40,f:[0,0,0,0,0,1],u:0,cs:0},           // Lactose, max 40g — PDF p5
+  {n:"Fromage blanc / Cottage",c:"Laitage",m:40,f:[0,0,0,0,0,1],u:0,cs:0}, // FREE — PDF p5
+
+  // ── NOIX / GRAINES ──────────────────────────────
+  {n:"Noix (cerneaux)",c:"Noix/Graine",m:30,f:[0,0,1,0,0,0],u:5,cs:0},  // Oligos, max 30g — PDF p6
+  {n:"Amandes",c:"Noix/Graine",m:12,f:[0,0,0,1,0,0],u:1,cs:0},           // Oligos, max 12g — PDF p6
+  {n:"Noix de cajou",c:"Noix/Graine",m:0,f:[0,0,1,1,0,0],u:0,cs:0},     // RED Oligos — PDF p6
+  {n:"Noisettes",c:"Noix/Graine",m:15,f:[0,0,1,0,0,0],u:1,cs:0},         // Oligos, max 15g — PDF p6
+  {n:"Noix de macadamia",c:"Noix/Graine",m:999,f:[0,0,0,0,0,0],u:2,cs:0},// FREE — PDF p6
+  {n:"Noix du Brésil",c:"Noix/Graine",m:30,f:[0,0,0,1,0,0],u:5,cs:0},   // Oligos, max 40g — PDF p6
+  {n:"Noix de pécan",c:"Noix/Graine",m:20,f:[0,0,1,0,0,0],u:4,cs:0},    // Oligos, max 20g — PDF p6
+  {n:"Pignons de pin",c:"Noix/Graine",m:14,f:[0,0,1,0,0,0],u:1,cs:0},   // Oligos, max 14g — PDF p6
+  {n:"Pistaches",c:"Noix/Graine",m:0,f:[0,0,1,0,0,0],u:0,cs:0},         // RED Oligos — PDF p6
+  {n:"Cacahuètes",c:"Noix/Graine",m:999,f:[0,0,0,0,0,0],u:0,cs:0},      // FREE — PDF p6
+  {n:"Beurre de cacahuète",c:"Noix/Graine",m:32,f:[0,0,1,0,0,0],u:0,cs:16},
+  {n:"Graines de chia",c:"Noix/Graine",m:24,f:[0,0,0,1,0,0],u:0,cs:12},  // Oligos, max 24g — PDF p6
+  {n:"Graines de lin",c:"Noix/Graine",m:999,f:[0,0,0,0,0,0],u:0,cs:11},
+  {n:"Graines de sésame",c:"Noix/Graine",m:10,f:[0,0,0,1,0,0],u:0,cs:9},// Oligos, max 11g — PDF p6
+  {n:"Graines de courge",c:"Noix/Graine",m:23,f:[0,0,0,1,0,0],u:0,cs:9},// Oligos, max 23g — PDF p6
+  {n:"Graines de tournesol",c:"Noix/Graine",m:5,f:[0,0,1,0,0,0],u:0,cs:9},// Oligos, max 6g — PDF p6
+  {n:"Noix de coco râpée (séchée)",c:"Noix/Graine",m:30,f:[0,0,0,0,1,0],u:0,cs:0}, // Sorbitol — PDF p4
+
+  // ── CONDIMENTS ──────────────────────────────────
+  {n:"Huile d'olive",c:"Condiment",m:999,f:[0,0,0,0,0,0],u:0,cs:9},
+  {n:"Huile de coco",c:"Condiment",m:999,f:[0,0,0,0,0,0],u:0,cs:9},
+  {n:"Huile de tournesol",c:"Condiment",m:999,f:[0,0,0,0,0,0],u:0,cs:9},
+  {n:"Vinaigre balsamique",c:"Condiment",m:10,f:[0,1,0,0,0,0],u:0,cs:15},
+  {n:"Vinaigre de vin blanc",c:"Condiment",m:999,f:[0,0,0,0,0,0],u:0,cs:15},
+  {n:"Vinaigre de cidre",c:"Condiment",m:999,f:[0,0,0,0,0,0],u:0,cs:15},
+  {n:"Sauce soja / tamari",c:"Condiment",m:42,f:[0,0,1,0,0,0],u:0,cs:18},
+  {n:"Moutarde (nature)",c:"Condiment",m:999,f:[0,0,0,0,0,0],u:0,cs:15},
+  {n:"Sirop d'érable",c:"Condiment",m:999,f:[0,0,0,0,0,0],u:0,cs:20},  // FREE — PDF p6
+  {n:"Sucre blanc / roux / coco",c:"Condiment",m:999,f:[0,0,0,0,0,0],u:0,cs:0}, // FREE — PDF p6
+  {n:"Miel",c:"Condiment",m:5,f:[0,0,1,0,0,0],u:0,cs:0},              // RED Fructose — PDF p6
+  {n:"Sel",c:"Condiment",m:999,f:[0,0,0,0,0,0],u:0,cs:0},
+  {n:"Poivre",c:"Condiment",m:999,f:[0,0,0,0,0,0],u:0,cs:0},
+  {n:"Jus de citron",c:"Condiment",m:999,f:[0,0,0,0,0,0],u:0,cs:15},
+  {n:"Concentré de tomate",c:"Condiment",m:35,f:[0,0,1,0,0,0],u:0,cs:18},
+  {n:"Sauce tomate (nature)",c:"Condiment",m:65,f:[0,0,1,0,0,0],u:0,cs:18},
+  {n:"Tahini",c:"Condiment",m:40,f:[0,0,1,0,0,0],u:0,cs:16},
+  {n:"Mayonnaise",c:"Condiment",m:999,f:[0,0,0,0,0,0],u:0,cs:15},
+  {n:"Crème de soja (cuisine)",c:"Condiment",m:60,f:[0,0,0,1,0,0],u:0,cs:15},
+  {n:"Levure nutritionnelle",c:"Condiment",m:999,f:[0,0,0,0,0,0],u:0,cs:5},
+  {n:"Pâte de curry",c:"Condiment",m:999,f:[0,0,0,0,0,0],u:0,cs:0},
+  {n:"Cacao en poudre",c:"Condiment",m:8,f:[0,0,1,0,0,0],u:0,cs:7},  // Oligos, max 8g — PDF p7
+  {n:"Sirop doré (golden syrup)",c:"Condiment",m:7,f:[0,0,1,0,0,0],u:0,cs:0}, // Oligos — PDF p6
+
+  // ── HERBES & ÉPICES ─────────────────────────────
+  {n:"Ail des ours (feuilles)",c:"Herbe/Épice",m:16,f:[0,0,1,0,0,0],u:0,cs:0},
+  {n:"Ail (en poudre)",c:"Herbe/Épice",m:0,f:[0,0,1,0,0,0],u:0,cs:0}, // RED — ne jamais utiliser
+  {n:"Oignon (en poudre)",c:"Herbe/Épice",m:0,f:[0,0,1,0,0,0],u:0,cs:0},
+  {n:"Ciboulette",c:"Herbe/Épice",m:999,f:[0,0,0,0,0,0],u:0,cs:0},
+  {n:"Persil",c:"Herbe/Épice",m:999,f:[0,0,0,0,0,0],u:0,cs:0},
+  {n:"Basilic (frais)",c:"Herbe/Épice",m:999,f:[0,0,0,0,0,0],u:0,cs:0},
+  {n:"Thym",c:"Herbe/Épice",m:999,f:[0,0,0,0,0,0],u:0,cs:0},
+  {n:"Romarin",c:"Herbe/Épice",m:999,f:[0,0,0,0,0,0],u:0,cs:0},
+  {n:"Origan",c:"Herbe/Épice",m:999,f:[0,0,0,0,0,0],u:0,cs:0},
+  {n:"Cumin",c:"Herbe/Épice",m:999,f:[0,0,0,0,0,0],u:0,cs:0},
+  {n:"Curcuma",c:"Herbe/Épice",m:999,f:[0,0,0,0,0,0],u:0,cs:0},
+  {n:"Gingembre (frais/poudre)",c:"Herbe/Épice",m:999,f:[0,0,0,0,0,0],u:0,cs:0},
+  {n:"Paprika",c:"Herbe/Épice",m:999,f:[0,0,0,0,0,0],u:0,cs:0},
+  {n:"Piment (frais/séché)",c:"Herbe/Épice",m:28,f:[0,0,1,0,0,0],u:0,cs:0}, // Oligos, max 28g — PDF p3
+  {n:"Piment vert",c:"Herbe/Épice",m:999,f:[0,0,0,0,0,0],u:0,cs:0},
+  {n:"Coriandre (frais)",c:"Herbe/Épice",m:999,f:[0,0,0,0,0,0],u:0,cs:0},
+  {n:"Menthe (fraîche)",c:"Herbe/Épice",m:999,f:[0,0,0,0,0,0],u:0,cs:0},
+  {n:"Cannelle",c:"Herbe/Épice",m:999,f:[0,0,0,0,0,0],u:0,cs:0},
+  {n:"Cardamome",c:"Herbe/Épice",m:999,f:[0,0,0,0,0,0],u:0,cs:0},
+  {n:"Noix de muscade",c:"Herbe/Épice",m:999,f:[0,0,0,0,0,0],u:0,cs:0},
+  {n:"Estragon",c:"Herbe/Épice",m:999,f:[0,0,0,0,0,0],u:0,cs:0},
+  {n:"Aneth",c:"Herbe/Épice",m:999,f:[0,0,0,0,0,0],u:0,cs:0},
+  {n:"Sauge",c:"Herbe/Épice",m:999,f:[0,0,0,0,0,0],u:0,cs:0},
+  {n:"Galanga",c:"Herbe/Épice",m:999,f:[0,0,0,0,0,0],u:0,cs:0},
+  {n:"Asafoetida (hing) — substitut ail",c:"Herbe/Épice",m:999,f:[0,0,0,0,0,0],u:0,cs:0},
+
+  // ── BOISSONS ────────────────────────────────────
+  {n:"Café (espresso / instantané)",c:"Boisson",m:999,f:[0,0,0,0,0,0],u:0,cs:0}, // FREE — PDF p7
+  {n:"Thé noir (faible)",c:"Boisson",m:999,f:[0,0,0,0,0,0],u:0,cs:0},   // FREE — PDF p7
+  {n:"Thé vert",c:"Boisson",m:999,f:[0,0,0,0,0,0],u:0,cs:0},
+  {n:"Thé à la menthe",c:"Boisson",m:999,f:[0,0,0,0,0,0],u:0,cs:0},
+  {n:"Thé rooibos",c:"Boisson",m:999,f:[0,0,0,0,0,0],u:0,cs:0},
+  {n:"Thé à la camomille",c:"Boisson",m:0,f:[0,0,1,0,0,0],u:0,cs:0},    // RED — PDF p7
+  {n:"Vin rouge",c:"Boisson",m:999,f:[0,0,0,0,0,0],u:0,cs:0},           // FREE — PDF p7
+  {n:"Vin blanc sec",c:"Boisson",m:999,f:[0,0,0,0,0,0],u:0,cs:0},
+  {n:"Bière",c:"Boisson",m:999,f:[0,0,0,0,0,0],u:0,cs:0},
+  {n:"Jus de canneberge",c:"Boisson",m:999,f:[0,0,0,0,0,0],u:0,cs:0},
+];
+
+// ═══════════════════════════════════════════════════
+// CONSTANTES
+// ═══════════════════════════════════════════════════
+const FODMAP_NAMES = ["Fructose","Lactose","Fructanes","GOS","Sorbitol","Mannitol"];
+const FODMAP_COLORS = ["#c0392b","#2471a3","#7d3c98","#1e8449","#b7950b","#784212"];
+const FODMAP_SHORT = ["Fru","Lac","Fra","GOS","Sor","Man"];
+const CATS_DEFAULT = ["Légume","Fruit","Légumineuse","Œuf","Céréale","Laitage","Noix/Graine","Condiment","Herbe/Épice","Boisson"];
+let CATS = [...CATS_DEFAULT];
+
+// ═══════════════════════════════════════════════════
+// ÉTAT DE L'APP
+// ═══════════════════════════════════════════════════
+let db = [];
+let repas = [];       // [{aliment, qty, unit}]
+let dbFilter = {q:"", cat:"Tous"};
+let selectedSuggIdx = -1;
+let filteredSuggs = [];
+let currentUnit = 'g'; // unité active : g / u / cs / cc
+let excludedFodmaps = new Set(); // FODMAPs ignorés (Phase 3)
+let dbFodmapFilter = -1; // -1=tous, 0-5=index FODMAP filtré
+
+// Poids par défaut cs/cc génériques
+const CS_DEFAULT = 15; // g
+const CC_DEFAULT = 5;  // g
+
+function setUnit(unit) {
+  currentUnit = unit;
+  document.querySelectorAll('.unit-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('unit-'+unit).classList.add('active');
+  updateUnitHint();
+}
+
+function getSelectedAliment() {
+  const nom = document.getElementById('search-input').value.trim();
+  return db.find(a => a.n.toLowerCase() === nom.toLowerCase()) || null;
+}
+
+function updateUnitHint() {
+  const hint = document.getElementById('unit-hint-bar');
+  const a = getSelectedAliment();
+  if (!a) { hint.textContent = ''; return; }
+  if (currentUnit === 'g') {
+    hint.textContent = a.m >= 999 ? '✅ Pas de limite pour cet aliment' : `Max faible FODMAP : ${a.m} g`;
+  } else if (currentUnit === 'u') {
+    const ug = a.u || 0;
+    if (!ug) hint.innerHTML = `⚠️ Pas de poids unitaire défini pour cet aliment — utilisez les grammes`;
+    else hint.textContent = `1 unité ≈ ${ug} g${a.m < 999 ? ` · max ≈ ${(a.m/ug).toFixed(1)} unités` : ''}`;
+  } else if (currentUnit === 'cs') {
+    const csg = a.cs || CS_DEFAULT;
+    hint.textContent = `1 cs ≈ ${csg} g${a.m < 999 ? ` · max ≈ ${(a.m/csg).toFixed(1)} cs` : ''}`;
+  } else if (currentUnit === 'cc') {
+    const ccg = a.cs ? Math.round(a.cs/3) : CC_DEFAULT;
+    hint.textContent = `1 cc ≈ ${ccg} g${a.m < 999 ? ` · max ≈ ${(a.m/ccg).toFixed(1)} cc` : ''}`;
+  }
+}
+
+function qtyToGrams(qty, unit, aliment) {
+  if (unit === 'g') return qty;
+  if (unit === 'u') return qty * (aliment.u || 0);
+  if (unit === 'cs') return qty * (aliment.cs || CS_DEFAULT);
+  if (unit === 'cc') return qty * (aliment.cs ? Math.round(aliment.cs/3) : CC_DEFAULT);
+  return qty;
+}
+
+function unitLabel(unit) {
+  return {g:'g', u:'unité(s)', cs:'cs', cc:'cc'}[unit] || unit;
+}
+
+// ═══════════════════════════════════════════════════
+// PERSISTANCE localStorage
+// ═══════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════
+// CONFIGURATION GIST — token saisi par l'utilisateur
+// ═══════════════════════════════════════════════════
+const GIST_ID = "bc45c3b717a834cd531e51e234a0e5df";
+const GIST_FILE = "fodmap_data.json";
+
+// Le token est stocké UNIQUEMENT dans localStorage (jamais dans le code)
+function getToken() {
+  return localStorage.getItem('fodmap_gist_token') || '';
+}
+function setToken(t) {
+  localStorage.setItem('fodmap_gist_token', t.trim());
+}
+function hasToken() {
+  return !!getToken();
+}
+
+const GIST_API = `https://api.github.com/gists/${GIST_ID}`;
+
+let syncStatus = 'idle'; // idle | syncing | ok | error
+let syncTimeout = null;
+
+function setSyncStatus(status, msg) {
+  syncStatus = status;
+  const el = document.getElementById('sync-status');
+  if (!el) return;
+  const icons = {idle:'', syncing:'⏳', ok:'☁️ Sauvegardé', error:'⚠️ Erreur sync'};
+  el.textContent = msg || icons[status] || '';
+  el.style.color = status === 'error' ? 'var(--red)' : status === 'ok' ? 'var(--green)' : 'var(--grey-m)';
+}
+
+// ── Sauvegarder TOUT dans le Gist (avec délai anti-spam) ──
+function saveAll() {
+  // Sauvegarde locale immédiate (filet de sécurité)
+  try {
+    localStorage.setItem('fodmap_db', JSON.stringify(db));
+    localStorage.setItem('fodmap_repas', JSON.stringify(repas));
+    localStorage.setItem('fodmap_cats', JSON.stringify(CATS));
+    localStorage.setItem('fodmap_phase3', JSON.stringify([...excludedFodmaps]));
+  } catch(e) {}
+
+  // Sauvegarde Gist avec délai (éviter trop d'appels API)
+  clearTimeout(syncTimeout);
+  setSyncStatus('syncing');
+  syncTimeout = setTimeout(saveToGist, 1500);
+}
+
+async function saveToGist() {
+  if (!hasToken()) {
+    setSyncStatus('error', '⚙️ Token manquant — configurez dans Paramètres');
+    return;
+  }
+  const data = {
+    db, cats: CATS, repas,
+    phase3: [...excludedFodmaps],
+    updated: new Date().toISOString()
+  };
+  try {
+    const resp = await fetch(GIST_API, {
+      method: 'PATCH',
+      headers: {
+        'Authorization': `token ${getToken()}`,
+        'Accept': 'application/vnd.github.v3+json',
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        files: { [GIST_FILE]: { content: JSON.stringify(data, null, 2) } }
+      })
+    });
+    if (resp.ok) {
+      setSyncStatus('ok');
+      setTimeout(() => setSyncStatus('idle'), 3000);
+    } else {
+      throw new Error(`HTTP ${resp.status}`);
+    }
+  } catch(e) {
+    setSyncStatus('error', '⚠️ Sync échouée — données sauvées localement');
+    console.error('Gist save error:', e);
+  }
+}
+
+// ── Charger depuis le Gist au démarrage ──
+async function loadFromGist() {
+  if (!hasToken()) {
+    setSyncStatus('idle', '');
+    return false;
+  }
+  setSyncStatus('syncing', '⏳ Chargement...');
+  try {
+    const resp = await fetch(GIST_API, {
+      headers: {
+        'Authorization': `token ${getToken()}`,
+        'Accept': 'application/vnd.github.v3+json'
+      }
+    });
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+    const gist = await resp.json();
+    const fileContent = gist.files[GIST_FILE]?.content;
+    if (!fileContent || fileContent.trim() === '{}' || fileContent.trim() === '') {
+      throw new Error('Gist vide');
+    }
+    const data = JSON.parse(fileContent);
+
+    // Charger les données du Gist
+    if (data.db && Array.isArray(data.db) && data.db.length > 0) {
+      db = data.db;
+      localStorage.setItem('fodmap_db', JSON.stringify(db));
+    } else {
+      throw new Error('DB vide dans Gist');
+    }
+    if (data.cats) { CATS = data.cats; localStorage.setItem('fodmap_cats', JSON.stringify(CATS)); }
+    if (data.repas) { repas = data.repas; localStorage.setItem('fodmap_repas', JSON.stringify(repas)); }
+    if (data.phase3) { excludedFodmaps = new Set(data.phase3); }
+
+    setSyncStatus('ok', '☁️ Synchronisé');
+    setTimeout(() => setSyncStatus('idle'), 3000);
+    return true;
+  } catch(e) {
+    console.warn('Gist load failed, using local data:', e.message);
+    setSyncStatus('error', e.message === 'Gist vide' ? '☁️ Premier démarrage' : '⚠️ Mode hors ligne');
+    return false;
+  }
+}
+
+// ── Fonctions de compatibilité (appelées depuis le reste du code) ──
+function saveDB() { saveAll(); }
+function saveRepas() { saveAll(); }
+function saveCatsData() { saveAll(); }
+
+function loadDB() {
+  try {
+    const s = localStorage.getItem('fodmap_db');
+    if (s) { db = JSON.parse(s); return; }
+  } catch(e) {}
+  db = JSON.parse(JSON.stringify(DB_DEFAULT));
+}
+function loadRepas() {
+  try {
+    const s = localStorage.getItem('fodmap_repas');
+    if (s) repas = JSON.parse(s);
+  } catch(e) {}
+}
+function savePhase3() {
+  try { localStorage.setItem('fodmap_phase3', JSON.stringify([...excludedFodmaps])); } catch(e){}
+}
+function loadPhase3() {
+  try {
+    const s = localStorage.getItem('fodmap_phase3');
+    if (s) excludedFodmaps = new Set(JSON.parse(s));
+  } catch(e){}
+}
+function savePhase3() {
+  try { localStorage.setItem('fodmap_phase3', JSON.stringify([...excludedFodmaps])); } catch(e){}
+}
+function saveCats() { saveAll(); }
+function loadCats() {
+  try {
+    const s = localStorage.getItem('fodmap_cats');
+    if (s) { CATS = JSON.parse(s); return; }
+  } catch(e){}
+  CATS = [...CATS_DEFAULT];
+}
+function resetDB() {
+  if (!confirm("Réinitialiser la base avec les données Monash ? Vos modifications seront perdues.")) return;
+  db = JSON.parse(JSON.stringify(DB_DEFAULT));
+  CATS = [...CATS_DEFAULT];
+  saveAll();
+  renderDB();
+  toast("✅ Base réinitialisée");
+}
+
+// ═══════════════════════════════════════════════════
+// GESTION CATÉGORIES
+// ═══════════════════════════════════════════════════
+let catManageOpen = false;
+
+function toggleCatManage() {
+  catManageOpen = !catManageOpen;
+  document.getElementById('cats-manage').classList.toggle('open', catManageOpen);
+  if (catManageOpen) renderCatManage();
+}
+
+function renderCatManage() {
+  const list = document.getElementById('cats-list');
+  list.innerHTML = CATS.map((cat, i) => `
+    <div class="cat-manage-row" id="cat-row-${i}">
+      <span class="cat-manage-name" id="cat-name-${i}">${cat}</span>
+      <button class="btn-cat-edit" onclick="editCat(${i})">✏️</button>
+      <button class="btn-cat-del" onclick="deleteCat(${i})">🗑️</button>
+    </div>`).join('');
+}
+
+function editCat(i) {
+  const row = document.getElementById(`cat-row-${i}`);
+  const oldName = CATS[i];
+  row.innerHTML = `
+    <input class="cat-edit-inp" id="cat-edit-inp-${i}" value="${oldName}">
+    <button class="btn-cat-save" onclick="saveCatEdit(${i})">✅</button>
+    <button class="btn-cat-del" onclick="renderCatManage()">✕</button>`;
+  document.getElementById(`cat-edit-inp-${i}`).focus();
+  document.getElementById(`cat-edit-inp-${i}`).addEventListener('keydown', e => {
+    if (e.key === 'Enter') saveCatEdit(i);
+    if (e.key === 'Escape') renderCatManage();
+  });
+}
+
+function saveCatEdit(i) {
+  const newName = document.getElementById(`cat-edit-inp-${i}`).value.trim();
+  if (!newName) { toast("⚠️ Le nom est requis"); return; }
+  if (CATS.includes(newName) && CATS.indexOf(newName) !== i) { toast("⚠️ Cette catégorie existe déjà"); return; }
+  const oldName = CATS[i];
+  // Mettre à jour tous les aliments de cette catégorie
+  db.forEach(a => { if (a.c === oldName) a.c = newName; });
+  CATS[i] = newName;
+  saveCats(); saveDB();
+  renderCatManage();
+  renderDB();
+  toast(`✅ Catégorie renommée en "${newName}"`);
+}
+
+function deleteCat(i) {
+  const cat = CATS[i];
+  const nbAliments = db.filter(a => a.c === cat).length;
+  const msg = nbAliments > 0
+    ? `Supprimer la catégorie "${cat}" ? Les ${nbAliments} aliments associés seront déplacés vers "Autre".`
+    : `Supprimer la catégorie "${cat}" ?`;
+  if (!confirm(msg)) return;
+  if (nbAliments > 0) {
+    if (!CATS.includes('Autre')) CATS.push('Autre');
+    db.forEach(a => { if (a.c === cat) a.c = 'Autre'; });
+  }
+  CATS.splice(i, 1);
+  saveCats(); saveDB();
+  renderCatManage();
+  renderDB();
+  toast(`🗑️ Catégorie "${cat}" supprimée`);
+}
+
+function addCat() {
+  const inp = document.getElementById('new-cat-inp');
+  const name = inp.value.trim();
+  if (!name) { toast("⚠️ Entrez un nom"); return; }
+  if (CATS.includes(name)) { toast("⚠️ Cette catégorie existe déjà"); return; }
+  CATS.push(name);
+  saveCats();
+  inp.value = '';
+  renderCatManage();
+  renderDB();
+  toast(`✅ Catégorie "${name}" ajoutée`);
+}
+
+// ═══════════════════════════════════════════════════
+// GESTION TOKEN
+// ═══════════════════════════════════════════════════
+function showTokenSetup() {
+  document.getElementById('setup-overlay').style.display = 'flex';
+  const inp = document.getElementById('setup-token-input');
+  inp.value = getToken() ? '•'.repeat(20) : '';
+  inp.placeholder = getToken() ? 'Token déjà configuré — entrez-en un nouveau' : 'ghp_xxxxxxxxxxxxxxxxxxxx';
+  document.getElementById('setup-error').textContent = '';
+  // Mettre à jour le bouton
+  const btn = document.getElementById('token-btn');
+  if (btn) btn.textContent = hasToken() ? '🔐 Modifier le token' : '🔐 Configurer le token';
+}
+
+function skipSetup() {
+  document.getElementById('setup-overlay').style.display = 'none';
+  localStorage.setItem('fodmap_setup_skipped', '1');
+}
+
+async function validateAndSaveToken() {
+  const inp = document.getElementById('setup-token-input');
+  const token = inp.value.trim();
+  const errEl = document.getElementById('setup-error');
+
+  if (!token || token === '•'.repeat(20)) {
+    if (getToken()) {
+      // Garder l'ancien token
+      document.getElementById('setup-overlay').style.display = 'none';
+      return;
+    }
+    errEl.textContent = '⚠️ Collez votre token GitHub';
+    return;
+  }
+  if (!token.startsWith('ghp_') && !token.startsWith('github_pat_')) {
+    errEl.textContent = '⚠️ Format invalide — doit commencer par ghp_';
+    return;
+  }
+
+  errEl.textContent = '⏳ Vérification...';
+  // Tester le token
+  try {
+    const resp = await fetch('https://api.github.com/user', {
+      headers: { 'Authorization': `token ${token}`, 'Accept': 'application/vnd.github.v3+json' }
+    });
+    if (!resp.ok) throw new Error('Token invalide');
+    setToken(token);
+    document.getElementById('setup-overlay').style.display = 'none';
+    toast('✅ Token configuré — synchronisation active !');
+    // Lancer la sync
+    const loaded = await loadFromGist();
+    if (loaded) { renderPhase3Chips(); renderRepas(); }
+    else { await saveToGist(); }
+  } catch(e) {
+    errEl.textContent = '❌ Token invalide ou sans accès Gist';
+  }
+}
+
+// ═══════════════════════════════════════════════════
+// NAVIGATION
+// ═══════════════════════════════════════════════════
+function goPage(id) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('page-'+id).classList.add('active');
+  const tabs = document.querySelectorAll('.nav-tab');
+  const idx = {repas:0, base:1, aide:2}[id];
+  tabs[idx].classList.add('active');
+  if (id === 'base') renderDB();
+}
+
+// ═══════════════════════════════════════════════════
+// RECHERCHE / SUGGESTIONS
+// ═══════════════════════════════════════════════════
+function normalize(s) {
+  return s.toLowerCase()
+    .normalize("NFD").replace(/[\u0300-\u036f]/g,"")
+    .replace(/['']/g,"'");
+}
+
+function onSearch(val) {
+  const q = val.trim();
+  selectedSuggIdx = -1;
+  if (q.length < 1) { closeSugg(); return; }
+  filteredSuggs = db.filter(a => normalize(a.n).includes(normalize(q))).slice(0, 12);
+  renderSugg(q);
+}
+
+function renderSugg(q) {
+  const el = document.getElementById('suggestions');
+  if (!filteredSuggs.length) { el.innerHTML=''; el.classList.remove('open'); return; }
+  el.innerHTML = filteredSuggs.map((a,i) => `
+    <div class="sugg-item" data-idx="${i}" onclick="selectSugg(${i})">
+      <div class="sugg-name">${highlightMatch(a.n, q)}</div>
+      <div class="sugg-cat">${a.c}</div>
+      <div class="sugg-dots">${fodmapDots(a)}</div>
+    </div>`).join('');
+  el.classList.add('open');
+}
+
+function highlightMatch(text, q) {
+  const re = new RegExp(`(${normalize(q).replace(/[.*+?^${}()|[\]\\]/g,'\\$&')})`, 'gi');
+  return text.replace(re, '<span class="highlight">$1</span>');
+}
+
+function fodmapDots(a) {
+  return a.f.map((v,i) => {
+    const cls = v === 0 ? 'absent' : (a.m === 0 ? 'always' : 'present');
+    return `<div class="sugg-dot" style="background:${cls==='absent'?'#e0e6ea':cls==='always'?'#c0392b':FODMAP_COLORS[i]}" title="${FODMAP_NAMES[i]}"></div>`;
+  }).join('');
+}
+
+function selectSugg(idx) {
+  const a = filteredSuggs[idx];
+  document.getElementById('search-input').value = a.n;
+  closeSugg();
+  updateUnitHint();
+  document.getElementById('qty-input').focus();
+}
+
+function closeSugg() {
+  const el = document.getElementById('suggestions');
+  el.classList.remove('open');
+  el.innerHTML = '';
+}
+
+function onSearchKey(e) {
+  if (e.key === 'ArrowDown') {
+    e.preventDefault();
+    selectedSuggIdx = Math.min(selectedSuggIdx+1, filteredSuggs.length-1);
+    highlightSugg();
+  } else if (e.key === 'ArrowUp') {
+    e.preventDefault();
+    selectedSuggIdx = Math.max(selectedSuggIdx-1, 0);
+    highlightSugg();
+  } else if (e.key === 'Enter') {
+    if (selectedSuggIdx >= 0 && filteredSuggs[selectedSuggIdx]) {
+      selectSugg(selectedSuggIdx);
+    } else if (filteredSuggs.length === 1) {
+      selectSugg(0);
+    }
+  } else if (e.key === 'Escape') {
+    closeSugg();
+  }
+}
+
+function highlightSugg() {
+  document.querySelectorAll('.sugg-item').forEach((el,i) => {
+    el.classList.toggle('selected', i === selectedSuggIdx);
+    if (i === selectedSuggIdx) el.scrollIntoView({block:'nearest'});
+  });
+}
+
+document.addEventListener('click', e => {
+  if (!e.target.closest('.search-wrap')) closeSugg();
+});
+
+// ═══════════════════════════════════════════════════
+// REPAS
+// ═══════════════════════════════════════════════════
+function addIngredient() {
+  const nom = document.getElementById('search-input').value.trim();
+  const qtyRaw = parseFloat(document.getElementById('qty-input').value);
+  if (!nom) { toast("⚠️ Choisissez un ingrédient"); return; }
+  if (!qtyRaw || qtyRaw <= 0) { toast("⚠️ Entrez une quantité"); return; }
+  const aliment = db.find(a => a.n.toLowerCase() === nom.toLowerCase());
+  if (!aliment) { toast("❌ Aliment non trouvé — vérifiez l'orthographe"); return; }
+
+  const unit = currentUnit;
+  const qtyG = qtyToGrams(qtyRaw, unit, aliment);
+
+  if ((unit === 'u') && !aliment.u) {
+    toast("⚠️ Pas de poids unitaire — entrez en grammes"); return;
+  }
+  if (qtyG <= 0) { toast("⚠️ Quantité invalide"); return; }
+
+  repas.push({ aliment, qty: qtyG, qtyRaw, unit });
+  saveRepas();
+  document.getElementById('search-input').value = '';
+  document.getElementById('qty-input').value = '';
+  document.getElementById('unit-hint-bar').textContent = '';
+  document.getElementById('search-input').focus();
+  renderRepas();
+  toast(`✅ ${nom} ajouté (${qtyRaw} ${unitLabel(unit)} = ${Math.round(qtyG)}g)`);
+}
+
+function removeIngredient(idx) {
+  repas.splice(idx, 1);
+  saveRepas();
+  renderRepas();
+}
+
+function resetRepas() {
+  if (repas.length === 0) return;
+  if (!confirm("Effacer tous les ingrédients ?")) return;
+  repas = [];
+  saveRepas();
+  renderRepas();
+}
+
+// ═══════════════════════════════════════════════════
+// PHASE 3
+// ═══════════════════════════════════════════════════
+let phase3Visible = false;
+
+function togglePhase3() {
+  phase3Visible = !phase3Visible;
+  document.getElementById('phase3-bar').style.display = phase3Visible ? 'block' : 'none';
+  document.getElementById('phase3-toggle-btn').textContent =
+    phase3Visible ? '⚙️ Masquer les réglages Phase 3' : '⚙️ Réglages Phase 3 (FODMAPs tolérés)';
+}
+
+function renderPhase3Chips() {
+  const bar = document.getElementById('phase3-bar');
+  bar.style.display = 'none'; // caché par défaut
+  const chips = document.getElementById('phase3-chips');
+  chips.innerHTML = FODMAP_NAMES.map((name, i) => {
+    const excl = excludedFodmaps.has(i);
+    return `<div class="phase3-chip ${excl?'excluded':''}"
+      style="background:${excl?'#f0f0f0':FODMAP_COLORS[i]+'22'};
+             color:${excl?'#999':FODMAP_COLORS[i]};
+             border-color:${excl?'#ddd':FODMAP_COLORS[i]}"
+      onclick="toggleFodmapExclusion(${i})">
+      ${excl ? '✗' : '✓'} ${name}
+    </div>`;
+  }).join('');
+}
+
+function toggleFodmapExclusion(i) {
+  if (excludedFodmaps.has(i)) excludedFodmaps.delete(i);
+  else excludedFodmaps.add(i);
+  savePhase3();
+  renderPhase3Chips();
+  renderRepas();
+}
+
+// ═══════════════════════════════════════════════════
+// FILTRE FODMAP BASE DE DONNÉES
+// ═══════════════════════════════════════════════════
+function renderFodmapFilter() {
+  const el = document.getElementById('fodmap-filter');
+  if (!el) return;
+  const btns = [['Tous', -1], ...FODMAP_NAMES.map((n,i) => [n, i])];
+  el.innerHTML = btns.map(([label, idx]) => {
+    const active = dbFodmapFilter === idx;
+    const color = idx === -1 ? '#2c3e50' : FODMAP_COLORS[idx];
+    return `<button class="fodmap-filter-btn ${active?'active':''}"
+      style="${active ? `background:${color};` : `color:${color};border-color:${color}40`}"
+      onclick="setFodmapFilter(${idx})">${label}</button>`;
+  }).join('');
+}
+
+function setFodmapFilter(idx) {
+  dbFodmapFilter = idx;
+  document.getElementById('cat-filter').dataset.built = '';
+  renderDB();
+  renderFodmapFilter();
+}
+
+function renderRepas() {
+  // Calcul des totaux
+  const totaux = [0,0,0,0,0,0];
+  repas.forEach(({aliment:a, qty}) => {  // qty est toujours en grammes
+    a.f.forEach((v,i) => {
+      if (excludedFodmaps.has(i)) return; // ignoré en phase 3
+      if (v === 0) return;
+      if (a.m === 0) { totaux[i] += 9.99; return; }
+      if (a.m >= 999) return;
+      totaux[i] += qty / a.m;
+    });
+  });
+
+  // Résultat global
+  const rc = document.getElementById('result-card');
+  const maxT = Math.max(...totaux);
+  if (repas.length === 0) {
+    rc.className = 'result-card empty';
+    rc.innerHTML = '<span class="result-emoji">☝️</span><div class="result-text">Ajoutez des ingrédients</div><div class="result-sub">Tapez un aliment ci-dessous</div>';
+  } else if (maxT > 1) {
+    rc.className = 'result-card bad';
+    const exceedants = FODMAP_SHORT.filter((_,i) => totaux[i] > 1).join(', ');
+    rc.innerHTML = `<span class="result-emoji">❌</span><div class="result-text">Repas non faible en FODMAP</div><div class="result-sub">Excès : ${exceedants}</div>`;
+  } else if (maxT > 0.8) {
+    rc.className = 'result-card warn';
+    rc.innerHTML = `<span class="result-emoji">⚠️</span><div class="result-text">À la limite — soyez prudente</div><div class="result-sub">Évitez d'ajouter d'autres aliments riches</div>`;
+  } else {
+    rc.className = 'result-card ok';
+    rc.innerHTML = `<span class="result-emoji">✅</span><div class="result-text">Repas faible en FODMAP</div><div class="result-sub">Bon appétit !</div>`;
+  }
+
+  // Totaux grid
+  const tc = document.getElementById('totaux-card');
+  const tg = document.getElementById('totaux-grid');
+  if (repas.length === 0) { tc.style.display='none'; }
+  else {
+    tc.style.display='block';
+    tg.innerHTML = totaux.map((t,i) => {
+      const pct = Math.min(Math.round(t*100), 999);
+      const cls = t > 1 ? 'bad' : t > 0.8 ? 'warn' : 'ok';
+      const barW = Math.min(pct, 100);
+      if (t === 0) return `<div class="total-cell ok"><div class="total-name">${FODMAP_SHORT[i]}</div><div class="total-pct ok">—</div><div class="total-bar"><div class="total-bar-fill ok" style="width:0%"></div></div></div>`;
+      return `<div class="total-cell ${cls}">
+        <div class="total-name">${FODMAP_SHORT[i]}</div>
+        <div class="total-pct ${cls}">${pct > 999 ? '❌' : pct+'%'}</div>
+        <div class="total-bar"><div class="total-bar-fill ${cls}" style="width:${barW}%"></div></div>
+      </div>`;
+    }).join('');
+  }
+
+  // Liste ingrédients
+  const il = document.getElementById('ing-list');
+  const lbl = document.getElementById('ing-label');
+  lbl.style.display = repas.length > 0 ? 'block' : 'none';
+  il.innerHTML = repas.map(({aliment:a, qty, qtyRaw, unit}, idx) => {
+    const chips = a.f.map((v,i) => {
+      if (v === 0) return '';
+      let cls, label;
+      if (a.m === 0) { cls='always'; label=`${FODMAP_SHORT[i]} ❌`; }
+      else if (a.m >= 999) return '';
+      else {
+        const pct = Math.round(qty/a.m*100);
+        cls = pct > 100 ? 'danger' : pct > 50 ? 'warn' : 'ok';
+        label = `${FODMAP_SHORT[i]} ${pct}%`;
+      }
+      return `<span class="fodmap-chip ${cls}" style="border:1px solid ${cls==='ok'?'#e0e6ea':FODMAP_COLORS[i]}20">${label}</span>`;
+    }).filter(Boolean).join('');
+    const maxLabel = a.m === 0 ? '<span style="color:#c0392b;font-size:.72rem">⚠️ toujours riche</span>' : a.m >= 999 ? '<span style="color:#1a7a4a;font-size:.72rem">illimité</span>' : `<span class="ing-max">max ${a.m}g</span>`;
+    const qtyDisplay = (qtyRaw && unit && unit !== 'g')
+      ? `<span class="ing-qty">${qtyRaw} ${unitLabel(unit)}<span style="color:var(--grey-m);font-size:.72rem;font-weight:400"> = ${Math.round(qty)}g</span></span>`
+      : `<span class="ing-qty">${qty}g</span>`;
+    return `<div class="ing-item">
+      <div class="ing-header">
+        <div class="ing-name">${a.n}</div>
+        ${maxLabel}
+        ${qtyDisplay}
+        <button class="ing-del" onclick="removeIngredient(${idx})">✕</button>
+      </div>
+      ${chips ? `<div class="ing-fodmap-row">${chips}</div>` : ''}
+    </div>`;
+  }).join('');
+}
+
+// ═══════════════════════════════════════════════════
+// BASE DE DONNÉES
+// ═══════════════════════════════════════════════════
+let activeCat = "Tous";
+
+function renderDB() {
+  const q = normalize(document.getElementById('db-search').value);
+  const filtered = db.filter(a => {
+    if (activeCat !== "Tous" && a.c !== activeCat) return false;
+    if (q && !normalize(a.n).includes(q) && !normalize(a.c).includes(q)) return false;
+    // Filtre FODMAP : garder seulement les aliments qui ont ce FODMAP
+    if (dbFodmapFilter !== -1) {
+      if (a.f[dbFodmapFilter] === 0) return false; // pas ce FODMAP
+    }
+    return true;
+  });
+
+  // Filtres catégorie
+  const cf = document.getElementById('cat-filter');
+  renderFodmapFilter();
+  if (!cf.dataset.built) {
+    cf.dataset.built = '1';
+    const cats = ["Tous", ...CATS];
+    cf.innerHTML = cats.map(c =>
+      `<button class="cat-btn ${c===activeCat?'active':''}" onclick="setCat('${c}')">${c}${c==='Tous'?'':''}</button>`
+    ).join('');
+    // Bouton reset DB
+    cf.innerHTML += `<button class="cat-btn" onclick="resetDB()" style="margin-left:auto;color:#c0392b;border-color:#c0392b">↺ Reset</button>`;
+  }
+  // Mettre à jour l'état actif
+  document.querySelectorAll('.cat-btn').forEach(b => {
+    if (!b.onclick?.toString().includes('resetDB')) {
+      b.classList.toggle('active', b.textContent.trim() === activeCat || (b.textContent.trim()==='Tous' && activeCat==='Tous'));
+    }
+  });
+
+  const tbl = document.getElementById('db-table');
+  if (!filtered.length) {
+    tbl.innerHTML = `<div class="empty-state"><span class="es-icon">🔍</span><p>Aucun aliment trouvé</p></div>`;
+    return;
+  }
+
+  tbl.innerHTML = filtered.map((a, fi) => {
+    const realIdx = db.indexOf(a);
+    const dots = a.f.map((v,i) => {
+      const cls = v === 0 ? 'absent' : (a.m === 0 ? 'always' : 'present');
+      const color = cls === 'absent' ? '#e0e6ea' : cls === 'always' ? '#c0392b' : FODMAP_COLORS[i];
+      return `<div class="db-dot ${cls}" style="background:${color}" title="${FODMAP_NAMES[i]}:${v===1?'présent':'absent'}"></div>`;
+    }).join('');
+    const maxStr = a.m === 0 ? '<span style="color:#c0392b;font-size:.75rem">❌ toujours riche</span>'
+                 : a.m >= 999 ? '<span style="color:#1a7a4a;font-size:.75rem">✅ illimité</span>'
+                 : `<span class="db-max">${a.m}g</span>`;
+    return `<div class="db-row">
+      <div class="db-row-header" onclick="toggleEdit(${realIdx})">
+        <div class="db-nom">${a.n}</div>
+        <div class="db-cat-tag">${a.c}</div>
+        ${maxStr}
+        <div class="db-dots">${dots}</div>
+      </div>
+      <div class="db-expand" id="edit-${realIdx}">
+        ${buildEditForm(a, realIdx)}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function buildEditForm(a, idx) {
+  const cbx = FODMAP_NAMES.map((name,i) =>
+    `<label class="fodmap-cb">
+      <input type="checkbox" ${a.f[i]?'checked':''} id="ef-f${i}-${idx}" style="accent-color:${FODMAP_COLORS[i]}">
+      <span style="color:${FODMAP_COLORS[i]}">${FODMAP_SHORT[i]}</span>
+    </label>`).join('');
+  return `<div class="db-edit-form">
+    <div class="db-edit-row">
+      <span class="db-edit-label">Nom</span>
+      <input class="db-edit-input" id="ef-nom-${idx}" value="${a.n.replace(/"/g,'&quot;').replace(/'/g,"&#39;")}">
+    </div>
+    <div class="db-edit-row">
+      <span class="db-edit-label">Catégorie</span>
+      <select class="db-edit-input" id="ef-cat-${idx}">
+        ${CATS.map(c=>`<option ${c===a.c?'selected':''}>${c}</option>`).join('')}
+      </select>
+    </div>
+    <div class="db-edit-row">
+      <span class="db-edit-label">Portion max</span>
+      <input class="db-edit-input" type="number" id="ef-max-${idx}" value="${a.m}" placeholder="999=illimité / 0=toujours riche">
+    </div>
+    <div class="db-edit-row">
+      <span class="db-edit-label">Poids/unité</span>
+      <input class="db-edit-input" type="number" id="ef-u-${idx}" value="${a.u||0}" placeholder="g pour 1 unité (0=non défini)">
+    </div>
+    <div class="db-edit-row">
+      <span class="db-edit-label">Poids/cs</span>
+      <input class="db-edit-input" type="number" id="ef-cs-${idx}" value="${a.cs||0}" placeholder="g pour 1 cs (0=défaut 15g)">
+    </div>
+    <div class="db-edit-row">
+      <span class="db-edit-label">FODMAPs</span>
+      <div class="fodmap-checkboxes">${cbx}</div>
+    </div>
+    <div class="db-edit-btns">
+      <button class="btn-save" onclick="saveEdit(${idx})">💾 Enregistrer</button>
+      <button class="btn-del" onclick="deleteAliment(${idx})">🗑️</button>
+      <button class="btn-cancel" onclick="toggleEdit(${idx})">Annuler</button>
+    </div>
+  </div>`;
+}
+
+function toggleEdit(idx) {
+  const el = document.getElementById(`edit-${idx}`);
+  if (!el) return;
+  const wasOpen = el.classList.contains('open');
+  document.querySelectorAll('.db-expand.open').forEach(e => e.classList.remove('open'));
+  if (!wasOpen) el.classList.add('open');
+}
+
+function saveEdit(idx) {
+  const nom = document.getElementById(`ef-nom-${idx}`).value.trim();
+  const cat = document.getElementById(`ef-cat-${idx}`).value;
+  const m = parseInt(document.getElementById(`ef-max-${idx}`).value) || 0;
+  const u = parseInt(document.getElementById(`ef-u-${idx}`)?.value) || 0;
+  const cs = parseInt(document.getElementById(`ef-cs-${idx}`)?.value) || 0;
+  const f = FODMAP_NAMES.map((_,i) => document.getElementById(`ef-f${i}-${idx}`).checked ? 1 : 0);
+  if (!nom) { toast("⚠️ Le nom est requis"); return; }
+  db[idx] = { n:nom, c:cat, m, f, u, cs };
+  saveDB();
+  renderDB();
+  toast("✅ Aliment modifié");
+}
+
+function deleteAliment(idx) {
+  if (!confirm(`Supprimer "${db[idx].n}" ?`)) return;
+  db.splice(idx, 1);
+  saveDB();
+  renderDB();
+  toast("🗑️ Aliment supprimé");
+}
+
+function setCat(cat) {
+  activeCat = cat;
+  document.getElementById('cat-filter').dataset.built = '';
+  renderDB();
+}
+
+// Ajout nouvel aliment
+let addFormOpen = false;
+function toggleAddForm() {
+  addFormOpen = !addFormOpen;
+  document.getElementById('add-form').classList.toggle('open', addFormOpen);
+  if (addFormOpen) {
+    // Peupler le select catégories dynamiquement
+    const sel = document.getElementById('new-cat-sel') || document.getElementById('new-cat');
+    if (sel) sel.innerHTML = CATS.map(c => `<option>${c}</option>`).join('');
+    // Construire les checkboxes FODMAP
+    document.getElementById('new-fodmaps').innerHTML = FODMAP_NAMES.map((n,i) =>
+      `<label class="fodmap-cb">
+        <input type="checkbox" id="new-f${i}" style="accent-color:${FODMAP_COLORS[i]}">
+        <span style="color:${FODMAP_COLORS[i]}">${FODMAP_SHORT[i]}</span>
+      </label>`).join('');
+    // Champs poids unitaire
+    const existingU = document.getElementById('new-u-row');
+    if (!existingU) {
+      const fodRow = document.getElementById('new-fodmaps').closest('.db-edit-row');
+      const uRow = document.createElement('div');
+      uRow.className = 'db-edit-row'; uRow.id = 'new-u-row';
+      uRow.innerHTML = '<span class="db-edit-label">Poids/unité</span><input class="db-edit-input" id="new-u" type="number" placeholder="g pour 1 unité (0=non défini)" style="flex:1">';
+      const csRow = document.createElement('div');
+      csRow.className = 'db-edit-row'; csRow.id = 'new-cs-row';
+      csRow.innerHTML = '<span class="db-edit-label">Poids/cs</span><input class="db-edit-input" id="new-cs" type="number" placeholder="g pour 1 cuillère à soupe (0=défaut 15g)" style="flex:1">';
+      fodRow.before(uRow);
+      fodRow.before(csRow);
+    }
+  }
+}
+
+function addNewAliment() {
+  const nom = document.getElementById('new-nom').value.trim();
+  const catEl = document.getElementById('new-cat-sel') || document.getElementById('new-cat');
+  const cat = catEl ? catEl.value : CATS[0];
+  const m = parseInt(document.getElementById('new-max').value) || 999;
+  const f = FODMAP_NAMES.map((_,i) => document.getElementById(`new-f${i}`).checked ? 1 : 0);
+  const u = parseInt(document.getElementById('new-u')?.value) || 0;
+  const cs = parseInt(document.getElementById('new-cs')?.value) || 0;
+  if (!nom) { toast("⚠️ Le nom est requis"); return; }
+  if (db.find(a => a.n.toLowerCase() === nom.toLowerCase())) { toast("⚠️ Cet aliment existe déjà"); return; }
+  db.push({ n:nom, c:cat, m, f, u, cs });
+  db.sort((a,b) => a.n.localeCompare(b.n, 'fr'));
+  saveDB();
+  toggleAddForm();
+  document.getElementById('new-nom').value = '';
+  renderDB();
+  toast(`✅ "${nom}" ajouté à la base`);
+}
+
+// ═══════════════════════════════════════════════════
+// TOAST
+// ═══════════════════════════════════════════════════
+let toastTimer;
+function toast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove('show'), 2500);
+}
+
+// ═══════════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════════
+// Charger d'abord le local (affichage immédiat)
+loadDB();
+loadRepas();
+loadCats();
+loadPhase3();
+renderPhase3Chips();
+renderRepas();
+
+// Afficher setup si pas de token et pas skippé
+if (!hasToken() && !localStorage.getItem('fodmap_setup_skipped')) {
+  setTimeout(() => {
+    document.getElementById('setup-overlay').style.display = 'flex';
+  }, 800);
+}
+
+// Mettre à jour le bouton token
+const tokenBtn = document.getElementById('token-btn');
+if (tokenBtn) tokenBtn.textContent = hasToken() ? '🔐 Modifier le token' : '🔐 Configurer le token';
+
+// Puis charger depuis Gist si token disponible
+if (hasToken()) {
+  loadFromGist().then(loaded => {
+    if (loaded) {
+      renderPhase3Chips();
+      renderRepas();
+      if (document.getElementById('page-base').classList.contains('active')) {
+        renderDB();
+      }
+    }
+  });
+}
+
+// ── Service Worker PWA ──
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('sw.js').catch(() => {});
+}
+
+// ── Export/Import base ──
+function exportDB() {
+  const data = JSON.stringify({db, cats: CATS, repas, phase3: [...excludedFodmaps], updated: new Date().toISOString()}, null, 2);
+  const blob = new Blob([data], {type: 'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'fodmap_backup_' + new Date().toISOString().slice(0,10) + '.json';
+  a.click();
+  URL.revokeObjectURL(url);
+  toast('✅ Base exportée !');
+}
+
+function importDB() {
+  const inp = document.createElement('input');
+  inp.type = 'file'; inp.accept = '.json';
+  inp.onchange = e => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = ev => {
+      try {
+        const data = JSON.parse(ev.target.result);
+        if (!data.db || !Array.isArray(data.db)) throw new Error('Format invalide');
+        if (!confirm(`Importer ${data.db.length} aliments ? Cela remplacera votre base actuelle.`)) return;
+        db = data.db;
+        if (data.cats) CATS = data.cats;
+        if (data.repas) repas = data.repas;
+        if (data.phase3) { excludedFodmaps = new Set(data.phase3); renderPhase3Chips(); }
+        saveAll();
+        renderRepas(); renderDB();
+        toast(`✅ ${data.db.length} aliments importés !`);
+      } catch(err) {
+        toast('❌ Fichier invalide : ' + err.message);
+      }
+    };
+    reader.readAsText(file);
+  };
+  inp.click();
+}
+</script>
+</body>
+</html>
