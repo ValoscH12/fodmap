@@ -422,6 +422,15 @@ body{min-height:100vh;padding-bottom:80px}
         <span class="db-edit-label">FODMAPs</span>
         <div class="fodmap-checkboxes" id="new-fodmaps"></div>
       </div>
+      <div class="db-edit-row" style="align-items:flex-start">
+        <span class="db-edit-label" style="color:var(--grey-m);padding-top:6px">
+          Niveau ?<br>
+          <span style="font-size:.68rem;line-height:1.4;display:block;margin-top:2px">
+            — connu<br>?✓ probable ok<br>? incertain<br>?! à éviter
+          </span>
+        </span>
+        <div style="display:flex;gap:6px;flex-wrap:wrap" id="new-unknowns"></div>
+      </div>
       <div class="db-edit-btns">
         <button class="btn-save" onclick="addNewAliment()">✅ Enregistrer</button>
         <button class="btn-cancel" onclick="toggleAddForm()">Annuler</button>
@@ -1760,7 +1769,7 @@ function saveEdit(idx) {
   const u = parseInt(document.getElementById(`ef-u-${idx}`)?.value) || 0;
   const cs = parseInt(document.getElementById(`ef-cs-${idx}`)?.value) || 0;
   const f = FODMAP_NAMES.map((_,i) => document.getElementById(`ef-f${i}-${idx}`).checked ? 1 : 0);
-  const unknown = FODMAP_NAMES.map((_,i) => parseInt(document.getElementById(`ef-unk${i}-${idx}`)?.value||0));
+  const unknown = FODMAP_NAMES.map((_,i) => parseInt(document.getElementById(`new-unk${i}`)?.value||0));
   if (!nom) { toast("⚠️ Le nom est requis"); return; }
   db[idx] = { n:nom, c:cat, m, f, u, cs, unknown };
   saveDB();
@@ -1797,22 +1806,20 @@ function toggleAddForm() {
         <input type="checkbox" id="new-f${i}" style="accent-color:${FODMAP_COLORS[i]}">
         <span style="color:${FODMAP_COLORS[i]}">${FODMAP_SHORT[i]}</span>
       </label>`).join('');
-    // Champs inconnus 3 niveaux
-    const unkContainer = document.getElementById('new-fodmaps').closest('.db-edit-row').nextElementSibling;
-    if (unkContainer) {
-      const unkDiv = unkContainer.querySelector('.fodmap-checkboxes');
-      if (unkDiv) {
-        unkDiv.innerHTML = FODMAP_NAMES.map((n,i) => `
-          <div style="display:flex;flex-direction:column;align-items:center;gap:2px">
-            <span style="font-size:.7rem;color:#999">${FODMAP_SHORT[i]}</span>
-            <select id="new-unk${i}" style="width:46px;padding:2px;border:1px solid #ddd;border-radius:4px;font-size:.75rem">
-              <option value="0">—</option>
-              <option value="1" style="color:#2ecc71">?✓</option>
-              <option value="2" style="color:#e67e22">?</option>
-              <option value="3" style="color:#c0392b">?!</option>
-            </select>
-          </div>`).join('');
-      }
+    // Peupler les selects "Niveau ?" dans le formulaire d'ajout
+    const unkDiv = document.getElementById('new-unknowns');
+    if (unkDiv) {
+      unkDiv.innerHTML = FODMAP_NAMES.map((n,i) => `
+        <div style="display:flex;flex-direction:column;align-items:center;gap:3px">
+          <span style="font-size:.7rem;color:${FODMAP_COLORS[i]};font-weight:600">${FODMAP_SHORT[i]}</span>
+          <select id="new-unk${i}" style="width:46px;padding:3px 2px;border:1.5px solid #ddd;
+            border-radius:5px;font-size:.78rem;font-weight:600;cursor:pointer">
+            <option value="0" style="color:#ccc">—</option>
+            <option value="1" style="color:#2ecc71">?✓</option>
+            <option value="2" style="color:#e67e22">?</option>
+            <option value="3" style="color:#c0392b">?!</option>
+          </select>
+        </div>`).join('');
     }
     // Champs poids unitaire
     const existingU = document.getElementById('new-u-row');
