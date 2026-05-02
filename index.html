@@ -1769,7 +1769,7 @@ function saveEdit(idx) {
   const u = parseInt(document.getElementById(`ef-u-${idx}`)?.value) || 0;
   const cs = parseInt(document.getElementById(`ef-cs-${idx}`)?.value) || 0;
   const f = FODMAP_NAMES.map((_,i) => document.getElementById(`ef-f${i}-${idx}`).checked ? 1 : 0);
-  const unknown = FODMAP_NAMES.map((_,i) => parseInt(document.getElementById(`new-unk${i}`)?.value||0));
+  const unknown = FODMAP_NAMES.map((_,i) => parseInt(document.getElementById(`ef-unk${i}-${idx}`)?.value||0));
   if (!nom) { toast("⚠️ Le nom est requis"); return; }
   db[idx] = { n:nom, c:cat, m, f, u, cs, unknown };
   saveDB();
