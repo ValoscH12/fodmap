@@ -3,12 +3,12 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<title>🥦 FODMAP Analyser</title>
+<title>🥦 Fodi</title>
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#1a7a4a">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="FODMAP">
+<meta name="apple-mobile-web-app-title" content="Fodi">
 <link rel="apple-touch-icon" href="icon-192.png">
 <style>
 /* ── RESET & FONTS ────────────────────────────────── */
@@ -192,6 +192,26 @@ body{min-height:100vh;padding-bottom:80px}
 .setup-skip{width:100%;padding:8px;background:none;color:var(--grey-m);border:none;
   font-family:var(--font);font-size:.82rem;cursor:pointer;margin-top:6px;text-decoration:underline}
 
+/* ── INCONNU ? ────────────────────────────────────── */
+.unknown-badge{display:inline-block;background:#f0f0f0;color:var(--grey-m);
+  border-radius:4px;font-size:.72rem;font-weight:600;padding:1px 5px;
+  margin-left:4px;vertical-align:middle;border:1px solid #ddd}
+.warn-unknown{background:var(--orange-l);color:var(--orange);border-radius:6px;
+  padding:6px 10px;font-size:.8rem;margin-top:6px;display:flex;align-items:center;gap:6px}
+
+/* ── DIVISEUR DE PORTIONS ────────────────────────── */
+.diviseur-bar{background:#fff;border:1.5px solid var(--border);border-radius:var(--radius-sm);
+  padding:10px 14px;margin-bottom:10px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.diviseur-label{font-size:.82rem;color:var(--grey-m);white-space:nowrap}
+.diviseur-btns{display:flex;gap:5px;flex-wrap:wrap}
+.div-btn{padding:5px 12px;border:1.5px solid var(--border);border-radius:6px;
+  background:#fff;font-family:var(--font);font-size:.82rem;font-weight:500;
+  cursor:pointer;transition:all .2s;color:var(--grey)}
+.div-btn:hover{background:var(--blue-l);border-color:var(--blue);color:var(--blue)}
+.div-btn.active{background:var(--blue);color:#fff;border-color:var(--blue)}
+.div-reset{padding:5px 10px;background:none;border:1.5px solid var(--border);
+  border-radius:6px;font-family:var(--font);font-size:.78rem;color:var(--grey-m);cursor:pointer}
+
 /* ── TOAST ────────────────────────────────────────── */
 .toast{position:fixed;bottom:90px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--grey);color:#fff;padding:10px 20px;border-radius:30px;font-size:.85rem;font-weight:500;opacity:0;transition:all .3s;pointer-events:none;z-index:999;white-space:nowrap}
 .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
@@ -263,9 +283,9 @@ body{min-height:100vh;padding-bottom:80px}
 </div>
 
 <header class="app-header">
-  <h1>🥦 Analyseur FODMAP</h1>
+  <h1>🥦 Fodi</h1>
   <p style="display:flex;align-items:center;gap:8px">
-    <span style="font-size:.78rem;opacity:.8">Végétarien · Monash</span>
+    <span style="font-size:.78rem;opacity:.8">Fodi · Source Monash</span>
     <span id="sync-status" style="font-size:.75rem;flex:1"></span>
     <button onclick="showTokenSetup()"
       style="padding:3px 10px;background:rgba(255,255,255,.2);color:#fff;
@@ -340,6 +360,19 @@ body{min-height:100vh;padding-bottom:80px}
       <button class="add-btn" onclick="addIngredient()" title="Ajouter">+</button>
     </div>
     <div id="unit-hint-bar" style="font-size:.75rem;color:var(--grey-m);margin:-4px 0 8px;padding-left:2px;min-height:16px"></div>
+
+    <!-- Diviseur de portions -->
+    <div class="diviseur-bar" id="diviseur-bar" style="display:none">
+      <span class="diviseur-label">🍽️ Diviser pour</span>
+      <div class="diviseur-btns">
+        <button class="div-btn active" onclick="setDiviseur(1)" id="div-1">1 pers.</button>
+        <button class="div-btn" onclick="setDiviseur(2)" id="div-2">÷ 2</button>
+        <button class="div-btn" onclick="setDiviseur(3)" id="div-3">÷ 3</button>
+        <button class="div-btn" onclick="setDiviseur(4)" id="div-4">÷ 4</button>
+        <button class="div-btn" onclick="setDiviseur(6)" id="div-6">÷ 6</button>
+      </div>
+      <span id="div-label" style="font-size:.75rem;color:var(--grey-m);font-style:italic"></span>
+    </div>
 
     <!-- Liste des ingrédients -->
     <div class="section-title" id="ing-label" style="display:none">Ingrédients du repas</div>
@@ -471,257 +504,417 @@ body{min-height:100vh;padding-bottom:80px}
 // FODMAP: 0=absent, 1=présent jusqu'à portion max
 // ═══════════════════════════════════════════════════
 const DB_DEFAULT = [
-  // ── LÉGUMES (source PDF Monash) ──────────────────
-  {n:"Carotte",c:"Légume",m:999,f:[0,0,0,0,0,0],u:80,cs:0},
-  {n:"Carotte (cuite)",c:"Légume",m:999,f:[0,0,0,0,0,0],u:80,cs:0},
-  {n:"Courgette",c:"Légume",m:65,f:[0,0,1,0,0,0],u:200,cs:0},        // Oligos (fructanes) — PDF p3
-  {n:"Pomme de terre",c:"Légume",m:999,f:[0,0,0,0,0,0],u:130,cs:0},
-  {n:"Tomate (fraîche)",c:"Légume",m:65,f:[0,0,1,0,0,0],u:120,cs:0}, // FREE use — PDF p3
-  {n:"Tomate cerise",c:"Légume",m:45,f:[0,0,1,0,0,0],u:15,cs:0},     // Oligos — PDF p3
-  {n:"Tomate en boîte",c:"Légume",m:100,f:[0,0,1,0,0,0],u:0,cs:0},   // Fructose — PDF p3
-  {n:"Tomate roma",c:"Légume",m:46,f:[0,0,1,0,0,0],u:0,cs:0},       // Fructose — PDF p3
-  {n:"Concombre",c:"Légume",m:999,f:[0,0,0,0,0,0],u:0,cs:0},
-  {n:"Laitue (iceberg/romaine/beurre)",c:"Légume",m:999,f:[0,0,0,0,0,0],u:0,cs:0},
-  {n:"Épinards (frais/bébé)",c:"Légume",m:38,f:[0,0,1,0,0,0],u:0,cs:0},  // Oligos, max 38g — PDF p3
-  {n:"Épinards (cuits)",c:"Légume",m:250,f:[0,0,1,0,0,0],u:0,cs:0},
-  {n:"Poivron rouge",c:"Légume",m:40,f:[0,0,1,0,0,0],u:160,cs:0},    // FREE — PDF p3
-  {n:"Poivron vert",c:"Légume",m:52,f:[0,0,0,0,0,1],u:160,cs:0},      // Polyols (mannitol) — PDF p3
-  {n:"Poivron jaune",c:"Légume",m:35,f:[0,0,1,0,0,0],u:160,cs:0},
-  {n:"Haricots verts",c:"Légume",m:75,f:[0,0,0,0,0,1],u:0,cs:0},    // Polyols (mannitol) max 86g — PDF p3
-  {n:"Brocoli",c:"Légume",m:47,f:[0,0,1,1,0,0],u:300,cs:0},           // Oligos+Polyols, max 47g — PDF p3
-  {n:"Chou-fleur",c:"Légume",m:0,f:[0,0,0,0,0,1],u:700,cs:0},         // RED 0g, Polyols — PDF p3
-  {n:"Chou kale",c:"Légume",m:999,f:[0,0,0,0,0,0],u:300,cs:0},        // FREE — PDF p3
-  {n:"Chou blanc",c:"Légume",m:75,f:[0,0,0,1,0,0],u:0,cs:0},        // Polyols, max 94g — PDF p3
-  {n:"Chou rouge",c:"Légume",m:75,f:[0,0,1,0,0,0],u:0,cs:0},        // Oligos — PDF p3
-  {n:"Chou de Savoie",c:"Légume",m:35,f:[0,0,1,0,0,0],u:0,cs:0},    // Oligos — PDF p3
-  {n:"Choux de Bruxelles",c:"Légume",m:75,f:[0,0,1,0,0,0],u:0,cs:0},// Oligos, max 38g — PDF p3
-  {n:"Céleri (branche)",c:"Légume",m:12,f:[0,0,0,0,1,1],u:40,cs:0},  // Polyols (mannitol), max 12g — PDF p3
-  {n:"Céleri-rave",c:"Légume",m:75,f:[0,0,0,0,0,1],u:0,cs:0},      // FREE — PDF p3
-  {n:"Champignons de Paris (frais)",c:"Légume",m:0,f:[0,0,0,1,0,0],u:15,cs:0}, // RED 0g — PDF p3
-  {n:"Champignons en boîte",c:"Légume",m:75,f:[0,0,0,1,0,0],u:15,cs:0},       // Polyols, max 110g — PDF p3
-  {n:"Shiitake séché",c:"Légume",m:7,f:[0,0,0,0,0,1],u:0,cs:0},     // Polyols, max 7g — PDF p3
-  {n:"Champignon huître",c:"Légume",m:999,f:[0,0,0,0,0,0],u:0,cs:0},
-  {n:"Maïs doux",c:"Légume",m:43,f:[0,0,1,0,0,1],u:200,cs:0},         // Oligos+Polyols, max 43g — PDF p3
-  {n:"Maïs en boîte (rincé)",c:"Légume",m:75,f:[0,0,1,0,0,1],u:0,cs:0},
-  {n:"Patate douce",c:"Légume",m:75,f:[0,0,0,0,0,1],u:130,cs:0},      // Polyols, max 70g — PDF p3
-  {n:"Aubergine",c:"Légume",m:41,f:[0,0,0,0,0,1],u:300,cs:0},         // Polyols (mannitol), max 41g — PDF p3
-  {n:"Betterave",c:"Légume",m:75,f:[0,0,1,0,0,0],u:100,cs:0},         // Oligos, max 20g — PDF p3
-  {n:"Courge butternut",c:"Légume",m:60,f:[0,0,1,1,0,0],u:900,cs:0},  // Oligos+Polyols, max 30g — PDF p3
-  {n:"Fenouil (bulbe)",c:"Légume",m:75,f:[0,0,1,0,0,0],u:250,cs:0},   // Oligos+Polyols — à vérifier
-  {n:"Poireau (partie verte)",c:"Légume",m:28,f:[0,0,0,0,0,1],u:0,cs:0}, // Polyols, max 28g — PDF p3
-  {n:"Poireau (bulbe/blanc)",c:"Légume",m:0,f:[0,0,1,0,0,0],u:0,cs:0},   // RED — PDF p3
-  {n:"Radis",c:"Légume",m:999,f:[0,0,0,0,0,0],u:0,cs:0},
-  {n:"Roquette",c:"Légume",m:999,f:[0,0,0,0,0,0],u:0,cs:0},
-  {n:"Mâche",c:"Légume",m:999,f:[0,0,0,0,0,0],u:0,cs:0},
-  {n:"Blette / Bette",c:"Légume",m:999,f:[0,0,0,0,0,0],u:0,cs:0},
-  {n:"Endive (bulbe)",c:"Légume",m:49,f:[0,0,1,0,0,0],u:100,cs:0},    // Oligos — PDF p3
-  {n:"Potiron / Potimarron",c:"Légume",m:75,f:[0,0,0,0,0,1],u:1500,cs:0}, // Oligos (pumpkin canned) — PDF p3
-  {n:"Pak choï / Bok choy",c:"Légume",m:85,f:[0,0,0,0,0,1],u:400,cs:0}, // Polyols — PDF p3
-  {n:"Asperges",c:"Légume",m:0,f:[0,1,0,0,0,0],u:20,cs:0},           // RED Fructose uniquement — PDF p3
-  {n:"Navet",c:"Légume",m:65,f:[0,0,0,0,0,1],u:150,cs:0},             // Polyols — PDF p3
-  {n:"Panais",c:"Légume",m:999,f:[0,0,0,0,0,0],u:130,cs:0},
-  {n:"Artichaut (cœur en boîte)",c:"Légume",m:28,f:[0,1,0,0,0,0],u:30,cs:0}, // Fructose — PDF p3
-  {n:"Artichaut (globe)",c:"Légume",m:0,f:[0,0,1,0,0,0],u:350,cs:0},  // RED Oligos — PDF p3
-  {n:"Broccolini",c:"Légume",m:999,f:[0,0,0,0,0,0],u:120,cs:0},
-  {n:"Citrouille (japonaise)",c:"Légume",m:999,f:[0,0,0,0,0,0],u:0,cs:0},
-  {n:"Avocat",c:"Légume",m:20,f:[0,0,0,0,1,0],u:150,cs:0},            // Sorbitol, max 20g — PDF p4
-  {n:"Maïs (flocons, sans gluten)",c:"Légume",m:999,f:[0,0,0,0,0,0],u:0,cs:0},
-  {n:"Mange-tout",c:"Légume",m:17,f:[0,0,1,0,0,1],u:0,cs:0},        // Oligos+Polyols — PDF p3
-
-  // ── FRUITS ──────────────────────────────────────
-  {n:"Banane (mûre)",c:"Fruit",m:56,f:[0,1,0,0,0,0],u:100,cs:0},      // Fructose à partir, max 56g — PDF p4
-  {n:"Banane (peu mûre / ferme)",c:"Fruit",m:999,f:[0,0,0,0,0,0],u:100,cs:0}, // FREE — PDF p4
-  {n:"Fraise",c:"Fruit",m:999,f:[0,0,0,0,0,0],u:15,cs:0},            // FREE — PDF p4
-  {n:"Framboise",c:"Fruit",m:999,f:[0,0,0,0,0,0],u:5,cs:0},          // Oligos, max 45g — PDF p4
-  {n:"Myrtille (européenne)",c:"Fruit",m:999,f:[0,0,0,0,0,0],u:1,cs:0}, // Oligos, max 20g — PDF p4
-  {n:"Bleuet (américain)",c:"Fruit",m:999,f:[0,0,0,0,0,0],u:1,cs:0},
-  {n:"Kiwi (vert)",c:"Fruit",m:999,f:[0,0,0,0,0,0],u:80,cs:0},       // Oligos, max 150g — PDF p4
-  {n:"Kiwi (gold/jaune)",c:"Fruit",m:999,f:[0,0,0,0,0,0],u:80,cs:0}, // FREE — PDF p4
-  {n:"Orange (navel)",c:"Fruit",m:999,f:[0,0,0,0,0,0],u:150,cs:0},    // FREE — PDF p4
-  {n:"Mandarine / Clémentine",c:"Fruit",m:999,f:[0,0,0,0,0,0],u:70,cs:0}, // FREE — PDF p4
-  {n:"Citron (jus)",c:"Fruit",m:999,f:[0,0,0,0,0,0],u:0,cs:0},
-  {n:"Citron vert / Lime (jus)",c:"Fruit",m:999,f:[0,0,0,0,0,0],u:0,cs:0},
-  {n:"Pamplemousse",c:"Fruit",m:999,f:[0,0,0,0,0,0],u:250,cs:0},        // RED Oligos — PDF p4
-  {n:"Raisin (thompson / rouge)",c:"Fruit",m:10,f:[0,0,1,0,0,0],u:0,cs:0}, // FREE — PDF p4
-  {n:"Ananas",c:"Fruit",m:999,f:[0,0,0,0,0,0],u:900,cs:0},            // Oligos, max 140g — PDF p4
-  {n:"Papaye / Paw paw",c:"Fruit",m:999,f:[0,0,0,0,0,0],u:400,cs:0},  // FREE — PDF p4
-  {n:"Mangue",c:"Fruit",m:0,f:[0,0,1,0,0,0],u:0,cs:0},              // RED Fructose — PDF p4
-  {n:"Pastèque",c:"Fruit",m:0,f:[0,0,1,0,0,0],u:2000,cs:0},            // RED Fructose+Oligos — PDF p4
-  {n:"Melon (Honeydew / jaune)",c:"Fruit",m:90,f:[0,0,1,0,0,0],u:1200,cs:0}, // Oligos, max 90g — PDF p4
-  {n:"Melon Cantaloup",c:"Fruit",m:999,f:[0,0,0,0,0,0],u:900,cs:0},    // Oligos, max 90g — PDF p4
-  {n:"Pêche (jaune)",c:"Fruit",m:0,f:[0,0,0,0,1,0],u:130,cs:0},       // RED Sorbitol — PDF p4
-  {n:"Pêche (blanche)",c:"Fruit",m:0,f:[0,0,1,0,1,0],u:130,cs:0},     // RED Oligos+Sorbitol — PDF p4
-  {n:"Nectarine",c:"Fruit",m:30,f:[0,0,0,0,1,0],u:130,cs:0},           // RED Oligos+Sorbitol — PDF p4
-  {n:"Pomme",c:"Fruit",m:0,f:[0,1,0,0,1,0],u:150,cs:0},               // RED Fructose+Sorbitol — PDF p4
-  {n:"Poire",c:"Fruit",m:0,f:[0,1,0,0,1,0],u:160,cs:0},               // RED Fructose+Sorbitol — PDF p4
-  {n:"Cerise",c:"Fruit",m:20,f:[0,0,1,0,1,0],u:0,cs:0},              // RED Fructose+Sorbitol — PDF p4
-  {n:"Abricot",c:"Fruit",m:60,f:[0,0,0,0,1,0],u:40,cs:0},             // RED Oligos+Sorbitol — PDF p4
-  {n:"Prune",c:"Fruit",m:0,f:[0,0,1,0,1,0],u:0,cs:0},               // RED
-  {n:"Figue (fraîche)",c:"Fruit",m:0,f:[0,1,0,0,0,0],u:0,cs:0},     // RED Fructose — PDF p4
-  {n:"Grenade",c:"Fruit",m:999,f:[0,0,0,0,0,0],u:250,cs:0},            // Oligos, max 38g — PDF p4
-  {n:"Fruit de la passion",c:"Fruit",m:999,f:[0,0,0,0,0,0],u:0,cs:0},// Oligos, max 23g — PDF p4
-  {n:"Litchi",c:"Fruit",m:95,f:[0,0,0,0,1,0],u:15,cs:0},              // RED Sorbitol — PDF p4
-  {n:"Noix de coco (fraîche)",c:"Fruit",m:80,f:[0,0,0,0,1,0],u:400,cs:0}, // Sorbitol, max 48g — PDF p4
-  {n:"Mûre",c:"Fruit",m:0,f:[0,0,0,0,1,0],u:0,cs:0},                // RED Sorbitol — PDF p4
-  {n:"Carambole",c:"Fruit",m:999,f:[0,0,0,0,0,0],u:0,cs:0},
-  {n:"Fruit du dragon",c:"Fruit",m:999,f:[0,0,0,0,0,0],u:0,cs:0},
-  {n:"Plantain (pelé)",c:"Fruit",m:999,f:[0,0,0,0,0,0],u:0,cs:0},
-  {n:"Rhubarbe",c:"Fruit",m:999,f:[0,0,0,0,0,0],u:0,cs:0},
-
-  // ── LÉGUMINEUSES ────────────────────────────────
-  {n:"Tofu ferme",c:"Légumineuse",m:999,f:[0,0,0,0,0,0],u:0,cs:0},  // FREE — PDF p6
-  {n:"Tofu soyeux",c:"Légumineuse",m:40,f:[0,0,0,1,0,0],u:0,cs:0},   // RED Oligos — PDF p6
-  {n:"Tempeh",c:"Légumineuse",m:100,f:[0,0,0,1,0,0],u:0,cs:0},      // Oligos, max 100g — PDF p6
-  {n:"Quorn (mince)",c:"Légumineuse",m:999,f:[0,0,0,0,0,0],u:0,cs:0},// FREE — PDF p6
-  {n:"Edamame / Soja (congelé)",c:"Légumineuse",m:999,f:[0,0,0,0,0,0],u:0,cs:0}, // FREE — PDF p6
-  {n:"Lentilles corail (cuites)",c:"Légumineuse",m:20,f:[0,0,0,1,0,0],u:0,cs:0}, // Oligos, max 23g — PDF p6
-  {n:"Lentilles vertes (cuites)",c:"Légumineuse",m:45,f:[0,0,0,1,0,0],u:0,cs:0}, // Oligos, max 23g — PDF p6
-  {n:"Lentilles (boîte)",c:"Légumineuse",m:999,f:[0,0,0,0,0,0],u:0,cs:0},        // FREE — PDF p6
-  {n:"Pois chiches (boîte, rincés)",c:"Légumineuse",m:80,f:[0,0,0,1,0,0],u:0,cs:0}, // Oligos — PDF p6
-  {n:"Haricots beurre (boîte)",c:"Légumineuse",m:35,f:[0,0,1,0,0,0],u:0,cs:0},   // Oligos — PDF p6
-  {n:"Haricots rouges (cuits)",c:"Légumineuse",m:0,f:[0,0,1,0,0,0],u:0,cs:0},    // RED — PDF p6
-  {n:"Pois cassés (cuits)",c:"Légumineuse",m:125,f:[0,0,1,0,0,0],u:0,cs:0},
-
-  // ── ŒUFS ────────────────────────────────────────
-  {n:"Œuf (toute cuisson)",c:"Œuf",m:999,f:[0,0,0,0,0,0],u:55,cs:0},
-
-  // ── CÉRÉALES ────────────────────────────────────
-  {n:"Riz blanc (cuit)",c:"Céréale",m:999,f:[0,0,0,0,0,0],u:0,cs:0},
-  {n:"Riz complet (cuit)",c:"Céréale",m:999,f:[0,0,0,0,0,0],u:0,cs:0},
-  {n:"Riz basmati",c:"Céréale",m:999,f:[0,0,0,0,0,0],u:0,cs:0},
-  {n:"Quinoa (blanc/rouge/noir)",c:"Céréale",m:999,f:[0,0,0,0,0,0],u:0,cs:0}, // FREE — PDF p2
-  {n:"Flocons d'avoine (fins)",c:"Céréale",m:50,f:[0,0,1,0,0,0],u:0,cs:10},    // Oligos, max 52g — PDF p2
-  {n:"Flocons d'avoine (rapides)",c:"Céréale",m:23,f:[0,0,1,0,0,0],u:0,cs:10}, // Oligos, max 23g — PDF p2
-  {n:"Flocons d'avoine (gros)",c:"Céréale",m:52,f:[0,0,1,0,0,0],u:0,cs:10},    // Oligos, max 60g — PDF p2
-  {n:"Pain au levain (blé)",c:"Céréale",m:110,f:[0,0,1,0,0,0],u:0,cs:0},
-  {n:"Pain sans gluten",c:"Céréale",m:999,f:[0,0,0,0,0,0],u:0,cs:0},
-  {n:"Pâtes de riz (cuites)",c:"Céréale",m:999,f:[0,0,0,0,0,0],u:0,cs:0},
-  {n:"Pâtes de blé (cuites)",c:"Céréale",m:145,f:[0,0,1,0,0,0],u:0,cs:0},
-  {n:"Pâtes sans gluten",c:"Céréale",m:999,f:[0,0,0,0,0,0],u:0,cs:0},
-  {n:"Maïzena / Fécule de maïs",c:"Céréale",m:999,f:[0,0,0,0,0,0],u:0,cs:10},
-  {n:"Farine de riz",c:"Céréale",m:999,f:[0,0,0,0,0,0],u:0,cs:10},
-  {n:"Farine de sarrasin",c:"Céréale",m:999,f:[0,0,0,0,0,0],u:0,cs:10},
-  {n:"Farine de maïs",c:"Céréale",m:999,f:[0,0,0,0,0,0],u:0,cs:10},
-  {n:"Polenta / Semoule de maïs",c:"Céréale",m:999,f:[0,0,0,0,0,0],u:0,cs:0},
-  {n:"Boulgour (cuit)",c:"Céréale",m:44,f:[0,0,1,0,0,0],u:0,cs:0},   // Oligos, max 44g — PDF p2
-  {n:"Millet (grain)",c:"Céréale",m:125,f:[0,0,1,0,0,0],u:0,cs:0},   // Oligos — PDF p2
-  {n:"Son d'avoine",c:"Céréale",m:20,f:[0,0,1,0,0,0],u:0,cs:0},      // Oligos, max 22g — PDF p2
-  {n:"Farine d'amande",c:"Céréale",m:24,f:[0,0,0,1,0,0],u:0,cs:0},   // GOS, max 24g — PDF p2
-  {n:"Riz soufflé",c:"Céréale",m:15,f:[0,0,1,0,0,0],u:0,cs:0},       // Oligos, max 15g — PDF p2
-  {n:"Amarante soufflée",c:"Céréale",m:10,f:[0,0,1,0,0,0],u:0,cs:0}, // Oligos, max 10g — PDF p2
-  {n:"Flocons de maïs (sans gluten)",c:"Céréale",m:999,f:[0,0,0,0,0,0],u:0,cs:0},
-
-  // ── LAITAGES ────────────────────────────────────
-  {n:"Lait de vache",c:"Laitage",m:0,f:[0,0,0,0,0,1],u:0,cs:0},     // RED Lactose — PDF p5
-  {n:"Lait sans lactose",c:"Laitage",m:999,f:[0,0,0,0,0,0],u:0,cs:0},
-  {n:"Lait d'amande",c:"Laitage",m:999,f:[0,0,0,0,0,0],u:0,cs:0},   // FREE — PDF p5
-  {n:"Lait d'avoine",c:"Laitage",m:30,f:[0,0,1,0,0,0],u:0,cs:0},    // Oligos, max 30g — PDF p5
-  {n:"Lait de coco (boîte)",c:"Laitage",m:999,f:[0,0,0,0,0,0],u:0,cs:0}, // FREE — PDF p5
-  {n:"Lait de coco UHT (brique)",c:"Laitage",m:120,f:[0,0,1,0,0,0],u:0,cs:0}, // Oligos, max 120g — PDF p5
-  {n:"Lait de riz",c:"Laitage",m:200,f:[0,0,1,0,0,0],u:0,cs:0},     // Oligos, max 200g — PDF p5
-  {n:"Lait de soja (protéine isolée)",c:"Laitage",m:999,f:[0,0,0,0,0,0],u:0,cs:0}, // FREE — PDF p5
-  {n:"Lait de soja (beans)",c:"Laitage",m:40,f:[0,0,1,0,0,0],u:0,cs:0}, // Oligos, max 40g — PDF p5
-  {n:"Crème de coco",c:"Laitage",m:999,f:[0,0,0,0,0,0],u:0,cs:0},
-  {n:"Eau de coco",c:"Laitage",m:100,f:[0,0,1,0,0,0],u:0,cs:15},      // Oligos+Polyols — PDF p7
-  {n:"Yaourt nature (vache)",c:"Laitage",m:0,f:[0,0,0,0,0,1],u:0,cs:0}, // RED Lactose — PDF p5
-  {n:"Yaourt de chèvre",c:"Laitage",m:999,f:[0,0,0,0,0,0],u:0,cs:0}, // FREE — PDF p5
-  {n:"Yaourt sans lactose",c:"Laitage",m:999,f:[0,0,0,0,0,0],u:0,cs:0},
-  {n:"Yaourt végétal (soja)",c:"Laitage",m:40,f:[0,0,0,1,0,0],u:0,cs:0},
-  {n:"Parmesan",c:"Laitage",m:999,f:[0,0,0,0,0,0],u:0,cs:0},
-  {n:"Cheddar affiné",c:"Laitage",m:999,f:[0,0,0,0,0,0],u:0,cs:0},
-  {n:"Gruyère / Emmental",c:"Laitage",m:999,f:[0,0,0,0,0,0],u:0,cs:0},
-  {n:"Camembert / Brie",c:"Laitage",m:999,f:[0,0,0,0,0,0],u:0,cs:0},  // FREE — PDF p5
-  {n:"Mozzarella",c:"Laitage",m:999,f:[0,0,0,0,0,0],u:0,cs:0},
-  {n:"Feta",c:"Laitage",m:999,f:[0,0,0,0,0,0],u:0,cs:0},             // FREE — PDF p5
-  {n:"Fromage de chèvre (chèvre)",c:"Laitage",m:999,f:[0,0,0,0,0,0],u:0,cs:0}, // FREE — PDF p5
-  {n:"Haloumi",c:"Laitage",m:50,f:[0,0,0,0,0,1],u:0,cs:0},           // Lactose, max 50g — PDF p5
-  {n:"Beurre",c:"Laitage",m:999,f:[0,0,0,0,0,0],u:0,cs:0},
-  {n:"Crème fraîche / liquide",c:"Laitage",m:40,f:[0,0,0,0,0,1],u:0,cs:0}, // RED Lactose — PDF p5
-  {n:"Ricotta",c:"Laitage",m:40,f:[0,0,0,0,0,1],u:0,cs:0},           // Lactose, max 40g — PDF p5
-  {n:"Fromage blanc / Cottage",c:"Laitage",m:40,f:[0,0,0,0,0,1],u:0,cs:0}, // FREE — PDF p5
-
-  // ── NOIX / GRAINES ──────────────────────────────
-  {n:"Noix (cerneaux)",c:"Noix/Graine",m:30,f:[0,0,1,0,0,0],u:5,cs:0},  // Oligos, max 30g — PDF p6
-  {n:"Amandes",c:"Noix/Graine",m:12,f:[0,0,0,1,0,0],u:1,cs:0},           // Oligos, max 12g — PDF p6
-  {n:"Noix de cajou",c:"Noix/Graine",m:0,f:[0,0,1,1,0,0],u:0,cs:0},     // RED Oligos — PDF p6
-  {n:"Noisettes",c:"Noix/Graine",m:15,f:[0,0,1,0,0,0],u:1,cs:0},         // Oligos, max 15g — PDF p6
-  {n:"Noix de macadamia",c:"Noix/Graine",m:999,f:[0,0,0,0,0,0],u:2,cs:0},// FREE — PDF p6
-  {n:"Noix du Brésil",c:"Noix/Graine",m:30,f:[0,0,0,1,0,0],u:5,cs:0},   // Oligos, max 40g — PDF p6
-  {n:"Noix de pécan",c:"Noix/Graine",m:20,f:[0,0,1,0,0,0],u:4,cs:0},    // Oligos, max 20g — PDF p6
-  {n:"Pignons de pin",c:"Noix/Graine",m:14,f:[0,0,1,0,0,0],u:1,cs:0},   // Oligos, max 14g — PDF p6
-  {n:"Pistaches",c:"Noix/Graine",m:0,f:[0,0,1,0,0,0],u:0,cs:0},         // RED Oligos — PDF p6
-  {n:"Cacahuètes",c:"Noix/Graine",m:999,f:[0,0,0,0,0,0],u:0,cs:0},      // FREE — PDF p6
-  {n:"Beurre de cacahuète",c:"Noix/Graine",m:32,f:[0,0,1,0,0,0],u:0,cs:16},
-  {n:"Graines de chia",c:"Noix/Graine",m:24,f:[0,0,0,1,0,0],u:0,cs:12},  // Oligos, max 24g — PDF p6
-  {n:"Graines de lin",c:"Noix/Graine",m:999,f:[0,0,0,0,0,0],u:0,cs:11},
-  {n:"Graines de sésame",c:"Noix/Graine",m:10,f:[0,0,0,1,0,0],u:0,cs:9},// Oligos, max 11g — PDF p6
-  {n:"Graines de courge",c:"Noix/Graine",m:23,f:[0,0,0,1,0,0],u:0,cs:9},// Oligos, max 23g — PDF p6
-  {n:"Graines de tournesol",c:"Noix/Graine",m:5,f:[0,0,1,0,0,0],u:0,cs:9},// Oligos, max 6g — PDF p6
-  {n:"Noix de coco râpée (séchée)",c:"Noix/Graine",m:30,f:[0,0,0,0,1,0],u:0,cs:0}, // Sorbitol — PDF p4
-
-  // ── CONDIMENTS ──────────────────────────────────
-  {n:"Huile d'olive",c:"Condiment",m:999,f:[0,0,0,0,0,0],u:0,cs:9},
-  {n:"Huile de coco",c:"Condiment",m:999,f:[0,0,0,0,0,0],u:0,cs:9},
-  {n:"Huile de tournesol",c:"Condiment",m:999,f:[0,0,0,0,0,0],u:0,cs:9},
-  {n:"Vinaigre balsamique",c:"Condiment",m:10,f:[0,1,0,0,0,0],u:0,cs:15},
-  {n:"Vinaigre de vin blanc",c:"Condiment",m:999,f:[0,0,0,0,0,0],u:0,cs:15},
-  {n:"Vinaigre de cidre",c:"Condiment",m:999,f:[0,0,0,0,0,0],u:0,cs:15},
-  {n:"Sauce soja / tamari",c:"Condiment",m:42,f:[0,0,1,0,0,0],u:0,cs:18},
-  {n:"Moutarde (nature)",c:"Condiment",m:999,f:[0,0,0,0,0,0],u:0,cs:15},
-  {n:"Sirop d'érable",c:"Condiment",m:999,f:[0,0,0,0,0,0],u:0,cs:20},  // FREE — PDF p6
-  {n:"Sucre blanc / roux / coco",c:"Condiment",m:999,f:[0,0,0,0,0,0],u:0,cs:0}, // FREE — PDF p6
-  {n:"Miel",c:"Condiment",m:5,f:[0,0,1,0,0,0],u:0,cs:0},              // RED Fructose — PDF p6
-  {n:"Sel",c:"Condiment",m:999,f:[0,0,0,0,0,0],u:0,cs:0},
-  {n:"Poivre",c:"Condiment",m:999,f:[0,0,0,0,0,0],u:0,cs:0},
-  {n:"Jus de citron",c:"Condiment",m:999,f:[0,0,0,0,0,0],u:0,cs:15},
-  {n:"Concentré de tomate",c:"Condiment",m:35,f:[0,0,1,0,0,0],u:0,cs:18},
-  {n:"Sauce tomate (nature)",c:"Condiment",m:65,f:[0,0,1,0,0,0],u:0,cs:18},
-  {n:"Tahini",c:"Condiment",m:40,f:[0,0,1,0,0,0],u:0,cs:16},
-  {n:"Mayonnaise",c:"Condiment",m:999,f:[0,0,0,0,0,0],u:0,cs:15},
-  {n:"Crème de soja (cuisine)",c:"Condiment",m:60,f:[0,0,0,1,0,0],u:0,cs:15},
-  {n:"Levure nutritionnelle",c:"Condiment",m:999,f:[0,0,0,0,0,0],u:0,cs:5},
-  {n:"Pâte de curry",c:"Condiment",m:999,f:[0,0,0,0,0,0],u:0,cs:0},
-  {n:"Cacao en poudre",c:"Condiment",m:8,f:[0,0,1,0,0,0],u:0,cs:7},  // Oligos, max 8g — PDF p7
-  {n:"Sirop doré (golden syrup)",c:"Condiment",m:7,f:[0,0,1,0,0,0],u:0,cs:0}, // Oligos — PDF p6
-
-  // ── HERBES & ÉPICES ─────────────────────────────
-  {n:"Ail des ours (feuilles)",c:"Herbe/Épice",m:16,f:[0,0,1,0,0,0],u:0,cs:0},
-  {n:"Ail (en poudre)",c:"Herbe/Épice",m:0,f:[0,0,1,0,0,0],u:0,cs:0}, // RED — ne jamais utiliser
-  {n:"Oignon (en poudre)",c:"Herbe/Épice",m:0,f:[0,0,1,0,0,0],u:0,cs:0},
-  {n:"Ciboulette",c:"Herbe/Épice",m:999,f:[0,0,0,0,0,0],u:0,cs:0},
-  {n:"Persil",c:"Herbe/Épice",m:999,f:[0,0,0,0,0,0],u:0,cs:0},
-  {n:"Basilic (frais)",c:"Herbe/Épice",m:999,f:[0,0,0,0,0,0],u:0,cs:0},
-  {n:"Thym",c:"Herbe/Épice",m:999,f:[0,0,0,0,0,0],u:0,cs:0},
-  {n:"Romarin",c:"Herbe/Épice",m:999,f:[0,0,0,0,0,0],u:0,cs:0},
-  {n:"Origan",c:"Herbe/Épice",m:999,f:[0,0,0,0,0,0],u:0,cs:0},
-  {n:"Cumin",c:"Herbe/Épice",m:999,f:[0,0,0,0,0,0],u:0,cs:0},
-  {n:"Curcuma",c:"Herbe/Épice",m:999,f:[0,0,0,0,0,0],u:0,cs:0},
-  {n:"Gingembre (frais/poudre)",c:"Herbe/Épice",m:999,f:[0,0,0,0,0,0],u:0,cs:0},
-  {n:"Paprika",c:"Herbe/Épice",m:999,f:[0,0,0,0,0,0],u:0,cs:0},
-  {n:"Piment (frais/séché)",c:"Herbe/Épice",m:28,f:[0,0,1,0,0,0],u:0,cs:0}, // Oligos, max 28g — PDF p3
-  {n:"Piment vert",c:"Herbe/Épice",m:999,f:[0,0,0,0,0,0],u:0,cs:0},
-  {n:"Coriandre (frais)",c:"Herbe/Épice",m:999,f:[0,0,0,0,0,0],u:0,cs:0},
-  {n:"Menthe (fraîche)",c:"Herbe/Épice",m:999,f:[0,0,0,0,0,0],u:0,cs:0},
-  {n:"Cannelle",c:"Herbe/Épice",m:999,f:[0,0,0,0,0,0],u:0,cs:0},
-  {n:"Cardamome",c:"Herbe/Épice",m:999,f:[0,0,0,0,0,0],u:0,cs:0},
-  {n:"Noix de muscade",c:"Herbe/Épice",m:999,f:[0,0,0,0,0,0],u:0,cs:0},
-  {n:"Estragon",c:"Herbe/Épice",m:999,f:[0,0,0,0,0,0],u:0,cs:0},
-  {n:"Aneth",c:"Herbe/Épice",m:999,f:[0,0,0,0,0,0],u:0,cs:0},
-  {n:"Sauge",c:"Herbe/Épice",m:999,f:[0,0,0,0,0,0],u:0,cs:0},
-  {n:"Galanga",c:"Herbe/Épice",m:999,f:[0,0,0,0,0,0],u:0,cs:0},
-  {n:"Asafoetida (hing) — substitut ail",c:"Herbe/Épice",m:999,f:[0,0,0,0,0,0],u:0,cs:0},
-
-  // ── BOISSONS ────────────────────────────────────
-  {n:"Café (espresso / instantané)",c:"Boisson",m:999,f:[0,0,0,0,0,0],u:0,cs:0}, // FREE — PDF p7
-  {n:"Thé noir (faible)",c:"Boisson",m:999,f:[0,0,0,0,0,0],u:0,cs:0},   // FREE — PDF p7
-  {n:"Thé vert",c:"Boisson",m:999,f:[0,0,0,0,0,0],u:0,cs:0},
-  {n:"Thé à la menthe",c:"Boisson",m:999,f:[0,0,0,0,0,0],u:0,cs:0},
-  {n:"Thé rooibos",c:"Boisson",m:999,f:[0,0,0,0,0,0],u:0,cs:0},
-  {n:"Thé à la camomille",c:"Boisson",m:0,f:[0,0,1,0,0,0],u:0,cs:0},    // RED — PDF p7
-  {n:"Vin rouge",c:"Boisson",m:999,f:[0,0,0,0,0,0],u:0,cs:0},           // FREE — PDF p7
-  {n:"Vin blanc sec",c:"Boisson",m:999,f:[0,0,0,0,0,0],u:0,cs:0},
-  {n:"Bière",c:"Boisson",m:999,f:[0,0,0,0,0,0],u:0,cs:0},
-  {n:"Jus de canneberge",c:"Boisson",m:999,f:[0,0,0,0,0,0],u:0,cs:0},
+  {n:"Abricot",c:"Fruit",m:70,f:[0,0,0,0,1,0],u:35,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Abricot (sec)",c:"Fruit",m:3,f:[0,0,1,0,1,0],u:0,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Agar agar",c:"Condiment",m:999,f:[0,0,0,0,0,0],u:0,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Ail",c:"Herbe/Épice",m:0,f:[0,0,1,0,0,0],u:0,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Ail des ours (feuilles)",c:"Herbe/Épice",m:9,f:[0,0,1,0,0,0],u:0,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Amande (en poudre)",c:"Condiment",m:24,f:[0,0,0,1,0,0],u:0,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Amande cuisine ?",c:"Condiment",m:500,f:[0,0,0,1,0,0],u:0,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Amandes",c:"Noix/Graine",m:20,f:[0,0,0,1,0,0],u:1,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Ananas",c:"Fruit",m:140,f:[0,0,1,0,0,0],u:0,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Aneth",c:"Herbe/Épice",m:999,f:[0,0,0,0,0,0],u:0,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Anise / Badiane",c:"Herbe/Épice",m:999,f:[0,0,0,0,0,0],u:0,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Artichaut",c:"Légume",m:20,f:[0,0,1,0,0,0],u:0,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Artichaut (cœur en boîte)",c:"Légume",m:50,f:[1,0,0,0,0,0],u:0,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Asafoetida (hing) — substitut ail",c:"Herbe/Épice",m:999,f:[0,0,0,0,0,0],u:0,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Asperge blanche (conserve)",c:"Légume",m:445,f:[1,0,1,0,0,0],u:0,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Asperge blanche ?",c:"Légume",m:500,f:[1,0,0,0,0,0],u:0,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Asperge verte",c:"Légume",m:40,f:[1,0,0,0,0,0],u:0,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Aubergine",c:"Légume",m:75,f:[0,0,0,0,1,0],u:350,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Avocat (perseitol)",c:"Légume",m:60,f:[0,0,0,0,1,0],u:240,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Baies de genièvre (infusion)",c:"Boisson",m:15,f:[0,0,1,0,0,0],u:0,cs:0,unknown:[1,0,0,0,0,0]},
+  {n:"Banane (bien mûre)",c:"Fruit",m:37,f:[0,0,1,0,0,0],u:100,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Banane (peu mûre / ferme)",c:"Fruit",m:100,f:[0,0,1,0,0,0],u:100,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Basilic (frais)",c:"Herbe/Épice",m:999,f:[0,0,0,0,0,0],u:0,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Betterave",c:"Légume",m:75,f:[0,0,1,1,0,0],u:0,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Beurre",c:"Laitage",m:100,f:[0,1,0,0,0,0],u:0,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Beurre / purée de noix de cajou",c:"Noix/Graine",m:0,f:[0,0,1,1,0,0],u:0,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Beurre de cacahuète",c:"Noix/Graine",m:150,f:[1,0,0,0,0,0],u:0,cs:16,unknown:[0,0,0,0,0,0]},
+  {n:"Bière",c:"Boisson",m:999,f:[0,0,0,0,0,0],u:0,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Blette / Bette",c:"Légume",m:999,f:[0,0,0,0,0,0],u:0,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Bouillon cube (légumes)",c:"Condiment",m:15,f:[0,0,1,0,0,0],u:0,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Bouillon cube (viande/poisson)",c:"Condiment",m:15,f:[0,0,1,0,0,0],u:0,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Bouillon Kub Or",c:"Condiment",m:15,f:[0,0,1,0,0,0],u:0,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Boulgour",c:"Céréale",m:44,f:[0,0,1,1,0,0],u:0,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Bourrache (fleurs)",c:"Herbe/Épice",m:999,f:[0,0,0,0,0,0],u:0,cs:0,unknown:[1,0,0,0,0,0]},
+  {n:"Brocoli (tiges)",c:"Légume",m:45,f:[1,0,0,0,0,0],u:0,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Brocoli (tête)",c:"Légume",m:75,f:[1,0,0,0,0,0],u:0,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Cacahuètes",c:"Noix/Graine",m:999,f:[0,0,0,0,0,0],u:0,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Cacao en poudre ?",c:"Condiment",m:0,f:[0,0,1,0,0,0],u:0,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Café (instantané)",c:"Boisson",m:999,f:[0,0,0,0,0,0],u:0,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Camembert / Brie",c:"Laitage",m:100,f:[0,1,0,0,0,0],u:0,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Cannelle",c:"Herbe/Épice",m:999,f:[0,0,0,0,0,0],u:0,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Carotte",c:"Légume",m:999,f:[0,0,0,0,0,0],u:80,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Cerfeuil",c:"Herbe/Épice",m:999,f:[0,0,0,0,0,0],u:0,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Cerise",c:"Fruit",m:20,f:[0,0,0,0,1,0],u:7,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Champignons de Paris (conserve)",c:"Légume",m:75,f:[0,0,0,0,0,1],u:0,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Champignons de Paris (frais)",c:"Légume",m:10,f:[1,0,0,0,0,1],u:0,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Champignons noirs (séchés)",c:"Légume",m:999,f:[0,0,0,0,0,0],u:0,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Cheddar",c:"Laitage",m:100,f:[0,1,0,0,0,0],u:0,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Chicorée (feuilles)",c:"Légume",m:75,f:[0,0,1,0,0,0],u:0,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Chili (poudre)",c:"Herbe/Épice",m:30,f:[0,0,1,0,0,0],u:0,cs:0,unknown:[1,0,0,0,0,0]},
+  {n:"Chou blanc",c:"Légume",m:75,f:[0,0,1,0,0,0],u:0,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Chou kale",c:"Légume",m:999,f:[0,0,0,0,0,0],u:300,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Chou rouge",c:"Légume",m:75,f:[0,0,1,0,0,0],u:0,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Chou-fleur",c:"Légume",m:75,f:[1,0,0,0,0,0],u:0,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Ciboulette",c:"Herbe/Épice",m:999,f:[0,0,0,0,0,0],u:0,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Citron (jus)",c:"Fruit",m:125,f:[0,0,1,0,0,0],u:0,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Citron vert (jus)",c:"Fruit",m:250,f:[0,0,1,0,0,0],u:0,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Citronnelle",c:"Herbe/Épice",m:999,f:[0,0,0,0,0,0],u:0,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Clou de girofle",c:"Herbe/Épice",m:999,f:[0,0,0,0,0,0],u:0,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Concentré de tomate",c:"Condiment",m:22,f:[0,0,1,0,0,0],u:0,cs:22,unknown:[0,0,0,0,0,0]},
+  {n:"Concombre",c:"Légume",m:130,f:[1,0,0,0,0,0],u:0,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Coriandre (poudre)",c:"Herbe/Épice",m:999,f:[0,0,0,0,0,0],u:0,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Courge butternut",c:"Légume",m:60,f:[1,0,1,0,0,0],u:900,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Courge spaghetti",c:"Légume",m:155,f:[0,0,1,0,0,0],u:0,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Courgette",c:"Légume",m:65,f:[0,0,1,0,0,0],u:250,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Crème d'avoine (cuisine)",c:"Laitage",m:30,f:[0,0,1,0,0,0],u:0,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Crème de coco (cuisine) ?",c:"Condiment",m:60,f:[0,0,0,0,1,0],u:0,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Crème de riz (cuisine)",c:"Laitage",m:100,f:[0,0,1,0,0,0],u:0,cs:0,unknown:[1,0,0,0,0,0]},
+  {n:"Crème de soja (cuisine)",c:"Condiment",m:35,f:[0,0,1,1,0,0],u:0,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Crème double",c:"Laitage",m:30,f:[0,0,0,0,0,1],u:0,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Crème fleurette / crème entière",c:"Laitage",m:60,f:[0,0,0,0,0,1],u:0,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Crème fraîche",c:"Laitage",m:40,f:[0,1,0,0,0,0],u:0,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Crème sûre / aigre (sour cream)",c:"Laitage",m:30,f:[0,0,0,0,1,1],u:0,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Crème à fouetter",c:"Laitage",m:0,f:[0,0,0,0,0,1],u:0,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Cumin",c:"Herbe/Épice",m:999,f:[0,0,0,0,0,0],u:0,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Curcuma",c:"Herbe/Épice",m:999,f:[0,0,0,0,0,0],u:0,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Curry en poudre (Amérique du Nord)",c:"Herbe/Épice",m:999,f:[0,0,0,0,0,0],u:0,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Curry en poudre (Europe/Inde)",c:"Herbe/Épice",m:30,f:[0,0,1,0,0,0],u:0,cs:0,unknown:[1,0,0,0,0,0]},
+  {n:"Céleri (branche)",c:"Légume",m:50,f:[0,0,0,0,0,1],u:40,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Céleri-rave",c:"Légume",m:75,f:[0,0,0,0,0,1],u:0,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Danette (chocolat/vanille)",c:"Laitage",m:30,f:[0,0,0,0,0,1],u:0,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Edamame / Soja (congelé)",c:"Légumineuse",m:75,f:[0,0,1,0,0,0],u:0,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Endive",c:"Légume",m:999,f:[0,0,0,0,0,0],u:0,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Estragon",c:"Herbe/Épice",m:999,f:[0,0,0,0,0,0],u:0,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Extrait de levure",c:"Condiment",m:999,f:[0,0,0,0,0,0],u:0,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Farine d'igname",c:"Céréale",m:999,f:[0,0,0,0,0,0],u:0,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Farine d'épeautre (tamisée)",c:"Céréale",m:999,f:[0,0,0,0,0,0],u:0,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Farine de  riz (complet ou semi-complet) ?",c:"Légume",m:500,f:[0,0,1,0,0,0],u:0,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Farine de bananes vertes",c:"Céréale",m:999,f:[0,0,0,0,0,0],u:0,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Farine de manioc / tapioca",c:"Céréale",m:10,f:[0,0,0,1,0,0],u:0,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Farine de maïs",c:"Céréale",m:999,f:[0,0,0,0,0,0],u:0,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Farine de millet",c:"Céréale",m:999,f:[0,0,0,0,0,0],u:0,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Farine de pois chiche",c:"Céréale",m:12,f:[0,0,1,1,0,0],u:0,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Farine de quinoa",c:"Céréale",m:999,f:[0,0,0,0,0,0],u:0,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Farine de riz",c:"Céréale",m:999,f:[0,0,0,0,0,0],u:0,cs:10,unknown:[0,0,0,0,0,0]},
+  {n:"Farine de riz gluant",c:"Céréale",m:999,f:[0,0,0,0,0,0],u:0,cs:0,unknown:[1,0,0,0,0,0]},
+  {n:"Farine de sarrasin",c:"Céréale",m:999,f:[0,0,0,0,0,0],u:0,cs:10,unknown:[0,0,0,0,0,0]},
+  {n:"Farine de sorgho",c:"Céréale",m:999,f:[0,0,0,0,0,0],u:0,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Farine de teff",c:"Céréale",m:999,f:[0,0,0,0,0,0],u:0,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Farine sans gluten (mélange)",c:"Céréale",m:100,f:[0,0,1,0,0,0],u:0,cs:0,unknown:[2,0,0,0,0,0]},
+  {n:"Fenouil (bulbe)",c:"Légume",m:75,f:[0,0,1,0,0,0],u:250,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Fenugrec (graines/feuilles)",c:"Herbe/Épice",m:999,f:[0,0,0,0,0,0],u:0,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Feta",c:"Laitage",m:999,f:[0,0,0,0,0,0],u:0,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Feuille de laurier",c:"Herbe/Épice",m:999,f:[0,0,0,0,0,0],u:0,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Feuilles de curry (holud)",c:"Herbe/Épice",m:999,f:[0,0,0,0,0,0],u:0,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Figue (fraîche)",c:"Fruit",m:0,f:[0,1,0,0,0,0],u:0,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Flocons d'avoine (fins)",c:"Céréale",m:50,f:[0,0,1,0,0,0],u:0,cs:10,unknown:[0,0,0,0,0,0]},
+  {n:"Flocons d'avoine (gros)",c:"Céréale",m:52,f:[0,0,1,0,0,0],u:0,cs:10,unknown:[0,0,0,0,0,0]},
+  {n:"Flocons d'avoine (rapides)",c:"Céréale",m:23,f:[0,0,1,0,0,0],u:0,cs:10,unknown:[0,0,0,0,0,0]},
+  {n:"Flocons de maïs (sans gluten)",c:"Céréale",m:999,f:[0,0,0,0,0,0],u:0,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Fond de veau",c:"Condiment",m:200,f:[0,0,1,0,0,0],u:0,cs:0,unknown:[1,0,0,0,0,0]},
+  {n:"Fond de volaille",c:"Condiment",m:200,f:[0,0,1,0,0,0],u:0,cs:0,unknown:[1,0,0,0,0,0]},
+  {n:"Fraise",c:"Fruit",m:999,f:[0,0,0,0,0,0],u:15,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Framboise",c:"Fruit",m:999,f:[0,0,0,0,0,0],u:5,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Fromage blanc / Cottage",c:"Laitage",m:40,f:[0,0,0,0,0,1],u:0,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Fromage de chèvre (chèvre)",c:"Laitage",m:999,f:[0,0,0,0,0,0],u:0,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Fruit de la passion",c:"Fruit",m:999,f:[0,0,0,0,0,0],u:0,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Fruit du dragon",c:"Fruit",m:999,f:[0,0,0,0,0,0],u:0,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Fèves",c:"Légumineuse",m:0,f:[0,1,0,0,0,0],u:0,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Fécule de pomme de terre",c:"Céréale",m:999,f:[0,0,0,0,0,0],u:0,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Galanga",c:"Herbe/Épice",m:999,f:[0,0,0,0,0,0],u:0,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Gingembre (frais/poudre)",c:"Herbe/Épice",m:999,f:[0,0,0,0,0,0],u:0,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Gnocchis (base pomme de terre)",c:"Céréale",m:100,f:[0,0,1,0,0,0],u:0,cs:0,unknown:[2,0,0,0,0,0]},
+  {n:"Gochugaru (piment coréen)",c:"Herbe/Épice",m:30,f:[0,0,1,0,0,0],u:0,cs:0,unknown:[1,0,0,0,0,0]},
+  {n:"Graines d'aneth",c:"Herbe/Épice",m:999,f:[0,0,0,0,0,0],u:0,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Graines de carvi",c:"Noix/Graine",m:10,f:[0,0,0,1,0,0],u:0,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Graines de chanvre",c:"Noix/Graine",m:30,f:[0,0,0,1,0,0],u:0,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Graines de chia",c:"Noix/Graine",m:24,f:[0,0,0,1,0,0],u:0,cs:12,unknown:[0,0,0,0,0,0]},
+  {n:"Graines de coriandre",c:"Herbe/Épice",m:999,f:[0,0,0,0,0,0],u:0,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Graines de courge",c:"Noix/Graine",m:30,f:[0,0,1,0,0,0],u:0,cs:10,unknown:[0,0,0,0,0,0]},
+  {n:"Graines de céleri",c:"Noix/Graine",m:15,f:[0,0,0,1,0,0],u:0,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Graines de fenouil",c:"Herbe/Épice",m:999,f:[0,0,0,0,0,0],u:0,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Graines de lin",c:"Noix/Graine",m:999,f:[0,0,0,0,0,0],u:0,cs:11,unknown:[0,0,0,0,0,0]},
+  {n:"Graines de moutarde",c:"Herbe/Épice",m:999,f:[0,0,0,0,0,0],u:0,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Graines de pavot",c:"Noix/Graine",m:30,f:[0,0,1,0,0,0],u:0,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Graines de sésame",c:"Noix/Graine",m:10,f:[0,0,0,1,0,0],u:0,cs:9,unknown:[0,0,0,0,0,0]},
+  {n:"Graines de tournesol",c:"Noix/Graine",m:5,f:[0,0,1,0,0,0],u:0,cs:9,unknown:[0,0,0,0,0,0]},
+  {n:"Grenade",c:"Fruit",m:999,f:[0,0,0,0,0,0],u:250,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Gruyère / Emmental",c:"Laitage",m:999,f:[0,0,0,0,0,0],u:0,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Gélatine",c:"Condiment",m:999,f:[0,0,0,0,0,0],u:0,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Haloumi",c:"Laitage",m:50,f:[0,0,0,0,0,1],u:0,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Haricots azuki (conserve)",c:"Légumineuse",m:40,f:[0,0,0,1,0,0],u:0,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Haricots beurre (boîte)",c:"Légumineuse",m:35,f:[0,0,1,0,0,0],u:0,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Haricots borlotti (conserve)",c:"Légumineuse",m:25,f:[0,0,1,1,0,0],u:0,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Haricots de Lima (conserve)",c:"Légumineuse",m:40,f:[0,0,1,1,0,0],u:0,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Haricots mungo (cuits)",c:"Légumineuse",m:50,f:[0,0,1,1,0,0],u:0,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Haricots noirs (conserve)",c:"Légumineuse",m:40,f:[0,0,1,1,0,0],u:0,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Haricots plats (secs/conserve)",c:"Légumineuse",m:25,f:[0,0,1,1,0,0],u:0,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Haricots rouges (cuits)",c:"Légumineuse",m:0,f:[0,0,1,0,0,0],u:0,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Haricots rouges / kidney (conserve)",c:"Légumineuse",m:40,f:[0,0,1,1,0,0],u:0,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Haricots rouges / kidney (secs)",c:"Légumineuse",m:20,f:[0,0,1,1,0,0],u:0,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Haricots verts",c:"Légume",m:75,f:[0,0,0,0,0,1],u:0,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Haricots verts (congelés)",c:"Légumineuse",m:75,f:[0,0,0,0,0,1],u:0,cs:0,unknown:[2,0,0,0,0,0]},
+  {n:"Haricots verts (conserve)",c:"Légumineuse",m:75,f:[0,0,0,0,0,1],u:0,cs:0,unknown:[2,0,0,0,0,0]},
+  {n:"Hostie",c:"Céréale",m:10,f:[0,0,0,0,0,0],u:0,cs:0,unknown:[1,0,0,0,0,0]},
+  {n:"Huile d'olive",c:"Condiment",m:999,f:[0,0,0,0,0,0],u:0,cs:9,unknown:[0,0,0,0,0,0]},
+  {n:"Huile de coco",c:"Condiment",m:999,f:[0,0,0,0,0,0],u:0,cs:9,unknown:[0,0,0,0,0,0]},
+  {n:"Huile de tournesol",c:"Condiment",m:999,f:[0,0,0,0,0,0],u:0,cs:9,unknown:[0,0,0,0,0,0]},
+  {n:"Jus d'orange (industriel 100%)",c:"Boisson",m:90,f:[0,1,0,0,0,0],u:0,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Jus d'orange (maison)",c:"Boisson",m:90,f:[0,1,0,0,0,0],u:0,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Jus de banane",c:"Boisson",m:90,f:[0,0,1,0,0,0],u:0,cs:0,unknown:[2,0,0,0,0,0]},
+  {n:"Jus de canneberge",c:"Boisson",m:999,f:[0,0,0,0,0,0],u:0,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Jus de carotte",c:"Boisson",m:200,f:[0,0,0,0,0,0],u:0,cs:0,unknown:[1,0,0,0,0,0]},
+  {n:"Jus de citron",c:"Condiment",m:999,f:[0,0,0,0,0,0],u:0,cs:15,unknown:[0,0,0,0,0,0]},
+  {n:"Jus de citron (pur)",c:"Boisson",m:60,f:[0,0,1,0,0,0],u:0,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Jus de citron vert (pur)",c:"Boisson",m:250,f:[0,0,1,0,0,0],u:0,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Jus de fruits (variable)",c:"Boisson",m:100,f:[0,0,0,0,0,0],u:0,cs:0,unknown:[2,0,0,0,0,0]},
+  {n:"Jus de gingembre",c:"Boisson",m:200,f:[0,0,0,0,0,0],u:0,cs:0,unknown:[1,0,0,0,0,0]},
+  {n:"Jus de goyave",c:"Boisson",m:100,f:[0,0,0,0,0,0],u:0,cs:0,unknown:[2,0,0,0,0,0]},
+  {n:"Jus de kiwi",c:"Boisson",m:150,f:[0,0,1,0,0,0],u:0,cs:0,unknown:[1,0,0,0,0,0]},
+  {n:"Jus de rhubarbe",c:"Boisson",m:200,f:[0,0,0,0,0,0],u:0,cs:0,unknown:[1,0,0,0,0,0]},
+  {n:"Jus de tomate",c:"Boisson",m:90,f:[0,0,1,0,0,0],u:0,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Kiwi (gold/jaune)",c:"Fruit",m:999,f:[0,0,0,0,0,0],u:80,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Kiwi (vert)",c:"Fruit",m:999,f:[0,0,0,0,0,0],u:80,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Kombucha",c:"Boisson",m:180,f:[0,0,1,0,0,0],u:0,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Lait d'amande",c:"Laitage",m:999,f:[0,0,0,0,0,0],u:0,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Lait d'avoine",c:"Laitage",m:30,f:[0,0,1,0,0,0],u:0,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Lait d'avoine (UK)",c:"Laitage",m:30,f:[0,0,1,1,0,0],u:0,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Lait de coco (boîte)",c:"Laitage",m:999,f:[0,0,0,0,0,0],u:0,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Lait de coco (en poudre)",c:"Laitage",m:999,f:[0,0,0,0,0,0],u:0,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Lait de coco UHT (brique)",c:"Laitage",m:120,f:[0,0,1,0,0,0],u:0,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Lait de macadamia",c:"Laitage",m:999,f:[0,0,0,0,0,0],u:0,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Lait de noix de cajou",c:"Laitage",m:40,f:[0,0,1,1,0,0],u:0,cs:0,unknown:[2,0,0,0,0,0]},
+  {n:"Lait de quinoa",c:"Laitage",m:250,f:[0,0,1,0,0,0],u:0,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Lait de riz",c:"Laitage",m:200,f:[0,0,1,0,0,0],u:0,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Lait de soja (beans)",c:"Laitage",m:40,f:[0,0,1,0,0,0],u:0,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Lait de soja (protéine isolée)",c:"Laitage",m:999,f:[0,0,0,0,0,0],u:0,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Lait de soja cuisine",c:"Laitage",m:999,f:[0,0,0,0,0,0],u:0,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Lait de soja cuisine (fèves)",c:"Laitage",m:45,f:[0,0,1,1,0,0],u:0,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Lait de vache",c:"Laitage",m:0,f:[0,0,0,0,0,1],u:0,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Lait sans lactose",c:"Laitage",m:999,f:[0,0,0,0,0,0],u:0,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Laitue (iceberg/romaine/beurre)",c:"Légume",m:999,f:[0,0,0,0,0,0],u:0,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Lavande",c:"Herbe/Épice",m:999,f:[0,0,0,0,0,0],u:0,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Lentilles (boîte)",c:"Légumineuse",m:999,f:[0,0,0,0,0,0],u:0,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Lentilles (nature, non préparées)",c:"Légumineuse",m:65,f:[0,0,1,1,0,0],u:0,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Lentilles brunes / jaunes",c:"Légumineuse",m:46,f:[0,0,0,1,0,0],u:0,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Lentilles corail (cuites)",c:"Légumineuse",m:20,f:[0,0,0,1,0,0],u:0,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Lentilles vertes (cuites)",c:"Légumineuse",m:45,f:[0,0,0,1,0,0],u:0,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Lentilles vertes du Puy",c:"Légumineuse",m:30,f:[0,0,1,1,0,0],u:0,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Levure nutritionnelle",c:"Condiment",m:999,f:[0,0,0,0,0,0],u:0,cs:5,unknown:[0,0,0,0,0,0]},
+  {n:"Levure sans gluten",c:"Condiment",m:999,f:[0,0,0,0,0,0],u:0,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Litchi",c:"Fruit",m:95,f:[0,0,0,0,1,0],u:15,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Livèche",c:"Herbe/Épice",m:20,f:[0,0,1,0,0,0],u:0,cs:0,unknown:[2,0,0,0,0,0]},
+  {n:"Mandarine / Clémentine",c:"Fruit",m:999,f:[0,0,0,0,0,0],u:70,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Mange-tout",c:"Légume",m:17,f:[0,0,1,0,0,1],u:0,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Mangue",c:"Fruit",m:0,f:[0,0,1,0,0,0],u:0,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Marjolaine",c:"Herbe/Épice",m:999,f:[0,0,0,0,0,0],u:0,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Mayonnaise",c:"Condiment",m:999,f:[0,0,0,0,0,0],u:0,cs:15,unknown:[0,0,0,0,0,0]},
+  {n:"Mayonnaise (industrielle)",c:"Condiment",m:999,f:[0,0,0,0,0,0],u:0,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Maïs (flocons, sans gluten)",c:"Légume",m:999,f:[0,0,0,0,0,0],u:0,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Maïs doux",c:"Légume",m:43,f:[0,0,1,0,0,1],u:200,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Maïs en boîte (rincé)",c:"Légume",m:75,f:[0,0,1,0,0,1],u:0,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Maïzena / Fécule de maïs",c:"Céréale",m:999,f:[0,0,0,0,0,0],u:0,cs:10,unknown:[0,0,0,0,0,0]},
+  {n:"Melon (Honeydew / jaune)",c:"Fruit",m:90,f:[0,0,1,0,0,0],u:1200,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Melon Cantaloup",c:"Fruit",m:999,f:[0,0,0,0,0,0],u:900,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Menthe (fraîche)",c:"Herbe/Épice",m:999,f:[0,0,0,0,0,0],u:0,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Menthe verte (spearmint)",c:"Herbe/Épice",m:999,f:[0,0,0,0,0,0],u:0,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Miel",c:"Condiment",m:5,f:[0,0,1,0,0,0],u:0,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Millet (grain)",c:"Céréale",m:125,f:[0,0,1,0,0,0],u:0,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Moutarde (nature)",c:"Condiment",m:999,f:[0,0,0,0,0,0],u:0,cs:15,unknown:[0,0,0,0,0,0]},
+  {n:"Mozzarella",c:"Laitage",m:999,f:[0,0,0,0,0,0],u:0,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Myrte",c:"Herbe/Épice",m:999,f:[0,0,0,0,0,0],u:0,cs:0,unknown:[1,0,0,0,0,0]},
+  {n:"Myrtille (européenne)",c:"Fruit",m:999,f:[0,0,0,0,0,0],u:1,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Mâche",c:"Légume",m:999,f:[0,0,0,0,0,0],u:0,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Mélange cinq épices",c:"Herbe/Épice",m:999,f:[0,0,1,0,0,0],u:0,cs:0,unknown:[1,0,0,0,0,0]},
+  {n:"Mélange quatre épices",c:"Herbe/Épice",m:999,f:[0,0,0,0,0,0],u:0,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Mélisse",c:"Herbe/Épice",m:999,f:[0,0,0,0,0,0],u:0,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Mûre",c:"Fruit",m:0,f:[0,0,0,0,1,0],u:0,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Naan",c:"Céréale",m:90,f:[0,0,1,0,0,0],u:0,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Navet",c:"Légume",m:65,f:[0,0,0,0,0,1],u:150,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Nectarine",c:"Fruit",m:30,f:[0,0,0,0,1,0],u:130,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Nigelle / cumin noir",c:"Herbe/Épice",m:30,f:[0,0,0,1,0,0],u:0,cs:0,unknown:[1,0,0,0,0,0]},
+  {n:"Noisettes",c:"Noix/Graine",m:15,f:[0,0,1,0,0,0],u:1,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Noix (cerneaux)",c:"Noix/Graine",m:30,f:[0,0,1,0,0,0],u:5,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Noix de cajou",c:"Noix/Graine",m:0,f:[0,0,1,1,0,0],u:0,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Noix de coco (fraîche)",c:"Fruit",m:80,f:[0,0,0,0,1,0],u:400,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Noix de coco râpée (séchée)",c:"Noix/Graine",m:30,f:[0,0,0,0,1,0],u:0,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Noix de macadamia",c:"Noix/Graine",m:999,f:[0,0,0,0,0,0],u:2,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Noix de muscade",c:"Herbe/Épice",m:999,f:[0,0,0,0,0,0],u:0,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Noix de pécan",c:"Noix/Graine",m:20,f:[0,0,1,0,0,0],u:4,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Noix du Brésil",c:"Noix/Graine",m:30,f:[0,0,0,1,0,0],u:5,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Nouilles aux oeufs",c:"Céréale",m:40,f:[0,0,1,0,0,0],u:0,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Nouilles de kelp (algues)",c:"Céréale",m:999,f:[0,0,0,0,0,0],u:0,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Nouilles soba",c:"Céréale",m:90,f:[0,0,1,0,0,0],u:0,cs:0,unknown:[1,0,0,0,0,0]},
+  {n:"Oignon (en poudre)",c:"Herbe/Épice",m:0,f:[0,0,1,0,0,0],u:0,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Oignons caramélisés",c:"Condiment",m:0,f:[0,0,1,0,0,0],u:0,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Orange (navel)",c:"Fruit",m:999,f:[0,0,0,0,0,0],u:150,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Origan",c:"Herbe/Épice",m:999,f:[0,0,0,0,0,0],u:0,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Pain au levain (blé)",c:"Céréale",m:110,f:[0,0,1,0,0,0],u:0,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Pain au maïs (100%)",c:"Céréale",m:999,f:[0,0,0,0,0,0],u:0,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Pain au millet",c:"Céréale",m:50,f:[0,0,1,0,0,0],u:0,cs:0,unknown:[2,0,0,0,0,0]},
+  {n:"Pain d'épices",c:"Céréale",m:30,f:[0,0,1,0,0,0],u:0,cs:0,unknown:[2,0,0,0,0,0]},
+  {n:"Pain de mie (blanc, blé)",c:"Céréale",m:35,f:[0,0,1,0,0,0],u:0,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Pain de mie d'avoine (levain)",c:"Céréale",m:46,f:[0,0,0,1,0,0],u:0,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Pain de quinoa",c:"Céréale",m:50,f:[0,0,1,0,0,0],u:0,cs:0,unknown:[2,0,0,0,0,0]},
+  {n:"Pain de riz (100%)",c:"Céréale",m:999,f:[0,0,0,0,0,0],u:0,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Pain des fleurs (crackers)",c:"Céréale",m:30,f:[0,0,0,0,0,0],u:0,cs:0,unknown:[2,0,0,0,0,0]},
+  {n:"Pain noir / vollkornbrot / pumpernickel",c:"Céréale",m:20,f:[0,0,1,0,0,0],u:0,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Pain Pane Vivo",c:"Céréale",m:40,f:[0,0,0,0,0,1],u:0,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Pain sans gluten",c:"Céréale",m:999,f:[0,0,0,0,0,0],u:0,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Pain à l'épeautre (levain)",c:"Céréale",m:50,f:[0,0,1,0,0,0],u:0,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Pak choï / Bok choy",c:"Légume",m:85,f:[0,0,0,0,0,1],u:400,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Pamplemousse",c:"Fruit",m:999,f:[0,0,0,0,0,0],u:250,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Panais",c:"Légume",m:999,f:[0,0,0,0,0,0],u:130,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Panko (chapelure japonaise)",c:"Céréale",m:25,f:[0,0,1,0,0,0],u:0,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Papaye / Paw paw",c:"Fruit",m:999,f:[0,0,0,0,0,0],u:400,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Paprika",c:"Herbe/Épice",m:999,f:[0,0,0,0,0,0],u:0,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Parmesan",c:"Laitage",m:999,f:[0,0,0,0,0,0],u:0,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Pastèque",c:"Fruit",m:0,f:[0,0,1,0,0,0],u:2000,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Patate douce",c:"Légume",m:75,f:[0,0,0,0,0,1],u:130,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Pectine (E440)",c:"Condiment",m:999,f:[0,0,0,0,0,0],u:0,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Persil",c:"Herbe/Épice",m:999,f:[0,0,0,0,0,0],u:0,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Petit épeautre / enkir",c:"Céréale",m:26,f:[0,0,1,0,0,0],u:0,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Petits pois (conserve)",c:"Légumineuse",m:50,f:[0,0,1,1,0,0],u:0,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Petits pois (surgelés)",c:"Légumineuse",m:55,f:[0,0,1,1,0,0],u:0,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Pignons de pin",c:"Noix/Graine",m:14,f:[0,0,1,0,0,0],u:1,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Piment (frais/séché)",c:"Herbe/Épice",m:28,f:[0,0,1,0,0,0],u:0,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Piment de la Jamaïque",c:"Herbe/Épice",m:999,f:[0,0,0,0,0,0],u:0,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Piment vert",c:"Herbe/Épice",m:999,f:[0,0,0,0,0,0],u:0,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Piments / paprika fumé",c:"Herbe/Épice",m:40,f:[0,0,0,1,0,0],u:0,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Pistaches",c:"Noix/Graine",m:0,f:[0,0,1,0,0,0],u:0,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Plantain (pelé)",c:"Fruit",m:999,f:[0,0,0,0,0,0],u:0,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Poire",c:"Fruit",m:0,f:[0,1,0,0,1,0],u:160,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Poireau (bulbe/blanc)",c:"Légume",m:0,f:[0,0,1,0,0,0],u:0,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Poireau (partie verte)",c:"Légume",m:28,f:[0,0,0,0,0,1],u:0,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Pois cassés (cuits)",c:"Légumineuse",m:125,f:[0,0,1,0,0,0],u:0,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Pois cassés (secs, cuits)",c:"Légumineuse",m:11,f:[0,0,1,0,0,0],u:0,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Pois chiches (boîte, rincés)",c:"Légumineuse",m:80,f:[0,0,0,1,0,0],u:0,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Pois chiches (trempés, puis bouillis)",c:"Légumineuse",m:40,f:[0,0,1,1,0,0],u:0,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Pois mange-tout (plats/gourmands)",c:"Légumineuse",m:75,f:[0,0,1,0,0,1],u:0,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Pois mange-tout (ronds)",c:"Légumineuse",m:75,f:[0,0,1,0,0,0],u:0,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Poivre",c:"Condiment",m:999,f:[0,0,0,0,0,0],u:0,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Poivre (toutes couleurs)",c:"Herbe/Épice",m:999,f:[0,0,0,0,0,0],u:0,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Poivre de Sichuan",c:"Herbe/Épice",m:999,f:[0,0,0,0,0,0],u:0,cs:0,unknown:[2,0,0,0,0,0]},
+  {n:"Poivron jaune",c:"Légume",m:35,f:[0,0,1,0,0,0],u:160,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Poivron rouge",c:"Légume",m:40,f:[0,0,1,0,0,0],u:160,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Poivron vert",c:"Légume",m:52,f:[0,0,0,0,0,1],u:160,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Polenta / Semoule de maïs",c:"Céréale",m:999,f:[0,0,0,0,0,0],u:0,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Pomme",c:"Fruit",m:0,f:[0,1,0,0,1,0],u:150,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Pomme de terre",c:"Légume",m:999,f:[0,0,0,0,0,0],u:0,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Potiron / Potimarron ?",c:"Légume",m:500,f:[0,0,1,1,0,1],u:0,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Poudre d'asafoetida",c:"Herbe/Épice",m:999,f:[0,0,0,0,0,0],u:0,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Prune",c:"Fruit",m:0,f:[0,0,1,0,1,0],u:0,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Purée / beurre d'amandes",c:"Noix/Graine",m:20,f:[0,0,0,1,0,0],u:0,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Pâte de curry",c:"Condiment",m:999,f:[0,0,0,0,0,0],u:0,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Pâte de tamarin",c:"Condiment",m:30,f:[0,0,1,0,0,0],u:0,cs:0,unknown:[1,0,0,0,0,0]},
+  {n:"Pâtes au quinoa",c:"Céréale",m:215,f:[0,0,1,0,0,0],u:0,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Pâtes aux pois chiches",c:"Céréale",m:100,f:[0,0,0,1,0,0],u:0,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Pâtes de blé (cuites)",c:"Céréale",m:145,f:[0,0,1,0,0,0],u:0,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Pâtes de blé (poids cru)",c:"Céréale",m:75,f:[0,0,1,0,0,0],u:0,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Pâtes de lentilles corail",c:"Céréale",m:35,f:[0,0,1,1,0,0],u:0,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Pâtes de riz (cuites)",c:"Céréale",m:999,f:[0,0,0,0,0,0],u:0,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Pâtes fraîches",c:"Céréale",m:75,f:[0,0,1,0,0,0],u:0,cs:0,unknown:[2,0,0,0,0,0]},
+  {n:"Pâtes sans gluten",c:"Céréale",m:999,f:[0,0,0,0,0,0],u:0,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Pâtes sans gluten (riz-maïs)",c:"Céréale",m:100,f:[0,0,0,0,0,0],u:0,cs:0,unknown:[2,0,0,0,0,0]},
+  {n:"Pâtes à l'épeautre (poids cru)",c:"Céréale",m:74,f:[0,0,1,0,0,0],u:0,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Pétales de fleurs comestibles",c:"Herbe/Épice",m:999,f:[0,0,0,0,0,0],u:0,cs:0,unknown:[1,0,0,0,0,0]},
+  {n:"Pêche (blanche)",c:"Fruit",m:0,f:[0,0,1,0,1,0],u:130,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Pêche (jaune)",c:"Fruit",m:0,f:[0,0,0,0,1,0],u:130,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Quinoa (blanc/rouge/noir)",c:"Céréale",m:999,f:[0,0,0,0,0,0],u:0,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Quorn (mince)",c:"Légumineuse",m:999,f:[0,0,0,0,0,0],u:0,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Radis",c:"Légume",m:999,f:[0,0,0,0,0,0],u:0,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Raifort",c:"Herbe/Épice",m:999,f:[0,0,0,0,0,0],u:0,cs:0,unknown:[1,0,0,0,0,0]},
+  {n:"Raisin (thompson / rouge)",c:"Fruit",m:10,f:[0,0,1,0,0,0],u:0,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Ras el hanout",c:"Herbe/Épice",m:30,f:[0,0,1,0,0,0],u:0,cs:0,unknown:[2,0,0,0,0,0]},
+  {n:"Rhubarbe",c:"Fruit",m:999,f:[0,0,0,0,0,0],u:0,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Ricotta",c:"Laitage",m:40,f:[0,0,0,0,0,1],u:0,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Riz basmati",c:"Céréale",m:999,f:[0,0,0,0,0,0],u:0,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Riz blanc (cuit)",c:"Céréale",m:999,f:[0,0,0,0,0,0],u:0,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Riz complet (cuit)",c:"Céréale",m:999,f:[0,0,0,0,0,0],u:0,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Riz soufflé",c:"Céréale",m:15,f:[0,0,1,0,0,0],u:0,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Romarin",c:"Herbe/Épice",m:999,f:[0,0,0,0,0,0],u:0,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Roquette",c:"Légume",m:999,f:[0,0,0,0,0,0],u:0,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Safran",c:"Herbe/Épice",m:999,f:[0,0,0,0,0,0],u:0,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Sarriette",c:"Herbe/Épice",m:999,f:[0,0,0,0,0,0],u:0,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Sauce aigre-douce",c:"Condiment",m:30,f:[0,0,1,0,0,0],u:0,cs:0,unknown:[2,0,0,0,0,0]},
+  {n:"Sauce au poivre (maison)",c:"Condiment",m:30,f:[0,0,1,0,0,0],u:0,cs:0,unknown:[2,0,0,0,0,0]},
+  {n:"Sauce aux canneberges (maison)",c:"Condiment",m:60,f:[0,0,0,0,0,0],u:0,cs:0,unknown:[1,0,0,0,0,0]},
+  {n:"Sauce gravlax",c:"Condiment",m:30,f:[0,0,1,0,0,0],u:0,cs:0,unknown:[2,0,0,0,0,0]},
+  {n:"Sauce hoisin",c:"Condiment",m:30,f:[0,0,1,0,0,0],u:0,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Sauce salsa (rouge, douce)",c:"Condiment",m:30,f:[0,0,1,0,0,0],u:0,cs:0,unknown:[2,0,0,0,0,0]},
+  {n:"Sauce saté",c:"Condiment",m:30,f:[0,0,0,1,0,0],u:0,cs:0,unknown:[2,0,0,0,0,0]},
+  {n:"Sauce soja / tamari",c:"Condiment",m:42,f:[0,0,1,0,0,0],u:0,cs:18,unknown:[0,0,0,0,0,0]},
+  {n:"Sauce tartare",c:"Condiment",m:30,f:[0,0,1,0,0,0],u:0,cs:0,unknown:[2,0,0,0,0,0]},
+  {n:"Sauce tomate (nature)",c:"Condiment",m:65,f:[0,0,1,0,0,0],u:0,cs:18,unknown:[0,0,0,0,0,0]},
+  {n:"Sauce vinaigrette (huile+vinaigre)",c:"Condiment",m:999,f:[0,0,0,0,0,0],u:0,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Sauce Worcestershire",c:"Condiment",m:15,f:[0,0,0,1,0,1],u:0,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Sauce à l'huître",c:"Condiment",m:20,f:[0,0,1,0,0,0],u:0,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Sauge",c:"Herbe/Épice",m:999,f:[0,0,0,0,0,0],u:0,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Seitan / protéine de blé",c:"Légumineuse",m:65,f:[0,0,1,0,0,0],u:0,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Sel",c:"Condiment",m:999,f:[0,0,0,0,0,0],u:0,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Shiitake séché",c:"Légume",m:7,f:[0,0,0,0,0,1],u:0,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Sirop d'érable",c:"Condiment",m:999,f:[0,0,0,0,0,0],u:0,cs:20,unknown:[0,0,0,0,0,0]},
+  {n:"Sirop doré (golden syrup)",c:"Condiment",m:7,f:[0,0,1,0,0,0],u:0,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Skyr",c:"Laitage",m:30,f:[0,0,0,0,0,1],u:0,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Son d'avoine",c:"Céréale",m:20,f:[0,0,1,0,0,0],u:0,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Spaghetti (blé, poids cru)",c:"Céréale",m:74,f:[0,0,1,0,0,0],u:0,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Sucre blanc / roux / coco",c:"Condiment",m:999,f:[0,0,0,0,0,0],u:0,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Sumac",c:"Herbe/Épice",m:20,f:[0,0,0,0,0,0],u:0,cs:0,unknown:[2,0,0,0,0,0]},
+  {n:"Tabasco rouge",c:"Condiment",m:10,f:[0,0,0,0,0,0],u:0,cs:0,unknown:[2,0,0,0,0,0]},
+  {n:"Tabasco vert",c:"Condiment",m:10,f:[0,0,0,0,0,0],u:0,cs:0,unknown:[2,0,0,0,0,0]},
+  {n:"Tahini",c:"Condiment",m:40,f:[0,0,1,0,0,0],u:0,cs:16,unknown:[0,0,0,0,0,0]},
+  {n:"Tapioca (granulés/perles)",c:"Céréale",m:999,f:[0,0,0,0,0,0],u:0,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Tartine craquante (sarrasin/multicéréales)",c:"Céréale",m:30,f:[0,0,0,0,0,0],u:0,cs:0,unknown:[2,0,0,0,0,0]},
+  {n:"Tempeh",c:"Légumineuse",m:100,f:[0,0,0,1,0,0],u:0,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Thym",c:"Herbe/Épice",m:999,f:[0,0,0,0,0,0],u:0,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Thé au jasmin",c:"Boisson",m:999,f:[0,0,0,0,0,0],u:0,cs:0,unknown:[1,0,0,0,0,0]},
+  {n:"Thé blanc",c:"Boisson",m:250,f:[0,0,1,0,0,0],u:0,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Thé chaï",c:"Boisson",m:180,f:[0,0,1,0,0,0],u:0,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Thé de chrysanthème",c:"Boisson",m:245,f:[0,0,1,0,0,0],u:0,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Thé glacé",c:"Boisson",m:180,f:[0,0,1,0,0,0],u:0,cs:0,unknown:[2,0,0,0,0,0]},
+  {n:"Thé matcha (poudre)",c:"Boisson",m:2,f:[0,0,0,0,0,0],u:0,cs:0,unknown:[1,0,0,0,0,0]},
+  {n:"Thé noir (avec lait de vache)",c:"Boisson",m:180,f:[0,0,0,0,0,1],u:0,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Thé noir (faible)",c:"Boisson",m:999,f:[0,0,0,0,0,0],u:0,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Thé noir (infusion forte)",c:"Boisson",m:180,f:[0,0,1,0,0,0],u:0,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Thé rooibos",c:"Boisson",m:999,f:[0,0,0,0,0,0],u:0,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Thé Sencha",c:"Boisson",m:999,f:[0,0,0,0,0,0],u:0,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Thé vert",c:"Boisson",m:999,f:[0,0,0,0,0,0],u:0,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Thé à la camomille",c:"Boisson",m:0,f:[0,0,1,0,0,0],u:0,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Thé à la menthe",c:"Boisson",m:999,f:[0,0,0,0,0,0],u:0,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Thé à la menthe (gunpowder)",c:"Boisson",m:999,f:[0,0,0,0,0,0],u:0,cs:0,unknown:[1,0,0,0,0,0]},
+  {n:"Thé à la menthe poivrée",c:"Boisson",m:999,f:[0,0,0,0,0,0],u:0,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Thé à la réglisse",c:"Boisson",m:999,f:[0,0,0,0,0,0],u:0,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Tofu ferme",c:"Légumineuse",m:999,f:[0,0,0,0,0,0],u:0,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Tofu soyeux",c:"Légumineuse",m:40,f:[0,0,0,1,0,0],u:0,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Tomate (fraîche)",c:"Légume",m:65,f:[0,0,1,0,0,0],u:120,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Tomate cerise",c:"Légume",m:45,f:[0,0,1,0,0,0],u:15,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Tomate en boîte",c:"Légume",m:100,f:[0,0,1,0,0,0],u:0,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Tomate roma",c:"Légume",m:46,f:[0,0,1,0,0,0],u:0,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Tortilla (100% maïs)",c:"Céréale",m:999,f:[0,0,0,0,0,0],u:0,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Vanille",c:"Herbe/Épice",m:999,f:[0,0,0,0,0,0],u:0,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Vermicelles de haricot mungo / soja",c:"Céréale",m:999,f:[0,0,0,0,0,0],u:0,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Vin blanc sec",c:"Boisson",m:999,f:[0,0,0,0,0,0],u:0,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Vin rouge",c:"Boisson",m:999,f:[0,0,0,0,0,0],u:0,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Vinaigre balsamique",c:"Condiment",m:10,f:[0,1,0,0,0,0],u:0,cs:15,unknown:[0,0,0,0,0,0]},
+  {n:"Vinaigre de cidre",c:"Condiment",m:999,f:[0,0,0,0,0,0],u:0,cs:15,unknown:[0,0,0,0,0,0]},
+  {n:"Vinaigre de vin blanc",c:"Condiment",m:999,f:[0,0,0,0,0,0],u:0,cs:15,unknown:[0,0,0,0,0,0]},
+  {n:"Yaourt aromatisé (vanille, lait de vache)",c:"Laitage",m:30,f:[0,0,0,0,0,1],u:0,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Yaourt au lait de brebis (nature)",c:"Laitage",m:30,f:[0,0,0,0,0,1],u:0,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Yaourt au lait de chèvre (nature)",c:"Laitage",m:30,f:[0,0,0,0,0,1],u:0,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Yaourt au lait de coco",c:"Laitage",m:170,f:[0,0,0,0,0,0],u:0,cs:0,unknown:[2,0,0,0,0,0]},
+  {n:"Yaourt de chèvre",c:"Laitage",m:999,f:[0,0,0,0,0,0],u:0,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Yaourt kéfir (lait animal)",c:"Laitage",m:30,f:[0,0,0,0,0,1],u:0,cs:0,unknown:[1,0,0,0,0,0]},
+  {n:"Yaourt nature (vache)",c:"Laitage",m:0,f:[0,0,0,0,0,1],u:0,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Yaourt sans lactose",c:"Laitage",m:999,f:[0,0,0,0,0,0],u:0,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Yaourt végétal (soja)",c:"Laitage",m:40,f:[0,0,0,1,0,0],u:0,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Zaatar",c:"Herbe/Épice",m:15,f:[0,0,1,0,0,0],u:0,cs:0,unknown:[1,0,0,0,0,0]},
+  {n:"Épinards",c:"Légume",m:999,f:[0,0,0,0,0,0],u:0,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Épinards (frais/bébé)",c:"Légume",m:38,f:[0,0,1,0,0,0],u:0,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Épinards (pousses)",c:"Légume",m:75,f:[0,0,1,0,0,0],u:0,cs:0,unknown:[0,0,0,0,0,0]},
+  {n:"Œuf (toute cuisson)",c:"Œuf",m:999,f:[0,0,0,0,0,0],u:55,cs:0,unknown:[0,0,0,0,0,0]}
 ];
 
 // ═══════════════════════════════════════════════════
@@ -742,6 +935,19 @@ let dbFilter = {q:"", cat:"Tous"};
 let selectedSuggIdx = -1;
 let filteredSuggs = [];
 let currentUnit = 'g'; // unité active : g / u / cs / cc
+let currentDiviseur = 1; // diviseur de portions actif
+
+function setDiviseur(d) {
+  currentDiviseur = d;
+  // Mettre à jour les boutons
+  [1,2,3,4,6].forEach(n => {
+    const btn = document.getElementById('div-'+n);
+    if (btn) btn.classList.toggle('active', n === d);
+  });
+  const lbl = document.getElementById('div-label');
+  if (lbl) lbl.textContent = d === 1 ? 'Quantités complètes' : `Chaque ingrédient ÷ ${d} → quantité pour 1 personne`;
+  renderRepas();
+}
 let excludedFodmaps = new Set(); // FODMAPs ignorés (Phase 3)
 let dbFodmapFilter = -1; // -1=tous, 0-5=index FODMAP filtré
 
@@ -1308,12 +1514,13 @@ function renderRepas() {
   // Calcul des totaux
   const totaux = [0,0,0,0,0,0];
   repas.forEach(({aliment:a, qty}) => {  // qty est toujours en grammes
+    const qtyDiv = qty / currentDiviseur; // appliquer le diviseur
     a.f.forEach((v,i) => {
       if (excludedFodmaps.has(i)) return; // ignoré en phase 3
       if (v === 0) return;
       if (a.m === 0) { totaux[i] += 9.99; return; }
       if (a.m >= 999) return;
-      totaux[i] += qty / a.m;
+      totaux[i] += qtyDiv / a.m;
     });
   });
 
@@ -1331,8 +1538,11 @@ function renderRepas() {
     rc.className = 'result-card warn';
     rc.innerHTML = `<span class="result-emoji">⚠️</span><div class="result-text">À la limite — soyez prudente</div><div class="result-sub">Évitez d'ajouter d'autres aliments riches</div>`;
   } else {
+    const hasAnyUnknown = repas.some(({aliment:a}) => (a.unknown||[]).some(v=>v));
     rc.className = 'result-card ok';
-    rc.innerHTML = `<span class="result-emoji">✅</span><div class="result-text">Repas faible en FODMAP</div><div class="result-sub">Bon appétit !</div>`;
+    rc.innerHTML = `<span class="result-emoji">${hasAnyUnknown ? '✅⚠️' : '✅'}</span>
+      <div class="result-text">Repas faible en FODMAP${hasAnyUnknown ? ' — données incomplètes' : ''}</div>
+      <div class="result-sub">${hasAnyUnknown ? 'Certains FODMAPs sont marqués ? — vérifiez manuellement' : 'Bon appétit !'}</div>`;
   }
 
   // Totaux grid
@@ -1358,23 +1568,36 @@ function renderRepas() {
   const il = document.getElementById('ing-list');
   const lbl = document.getElementById('ing-label');
   lbl.style.display = repas.length > 0 ? 'block' : 'none';
+  const divBar = document.getElementById('diviseur-bar');
+  if (divBar) divBar.style.display = repas.length > 0 ? 'flex' : 'none';
   il.innerHTML = repas.map(({aliment:a, qty, qtyRaw, unit}, idx) => {
+    const unk = a.unknown || [0,0,0,0,0,0];
+    const hasUnknown = unk.some(v => v === 1);
     const chips = a.f.map((v,i) => {
       if (v === 0) return '';
       let cls, label;
       if (a.m === 0) { cls='always'; label=`${FODMAP_SHORT[i]} ❌`; }
       else if (a.m >= 999) return '';
       else {
-        const pct = Math.round(qty/a.m*100);
+        const pct = Math.round((qty/currentDiviseur)/a.m*100);
         cls = pct > 100 ? 'danger' : pct > 50 ? 'warn' : 'ok';
         label = `${FODMAP_SHORT[i]} ${pct}%`;
       }
       return `<span class="fodmap-chip ${cls}" style="border:1px solid ${cls==='ok'?'#e0e6ea':FODMAP_COLORS[i]}20">${label}</span>`;
     }).filter(Boolean).join('');
+    const unknownChips = unk.map((v,i) => {
+      if (!v) return '';
+      const uColors = {1:'#2ecc71',2:'#e67e22',3:'#c0392b'};
+      const uBg = {1:'#d5f5e310',2:'#fdebd0',3:'#fadbd8'};
+      const uLabel = {1:'?',2:'?',3:'?!'};
+      return `<span class="fodmap-chip" style="background:${uBg[v]};color:${uColors[v]};border:1px dashed ${uColors[v]}">${uLabel[v]} ${FODMAP_SHORT[i]}</span>`;
+    }).filter(Boolean).join('');
     const maxLabel = a.m === 0 ? '<span style="color:#c0392b;font-size:.72rem">⚠️ toujours riche</span>' : a.m >= 999 ? '<span style="color:#1a7a4a;font-size:.72rem">illimité</span>' : `<span class="ing-max">max ${a.m}g</span>`;
+    const qtyEff = qty / currentDiviseur; // quantité effective après division
+    const showDiv = currentDiviseur > 1;
     const qtyDisplay = (qtyRaw && unit && unit !== 'g')
-      ? `<span class="ing-qty">${qtyRaw} ${unitLabel(unit)}<span style="color:var(--grey-m);font-size:.72rem;font-weight:400"> = ${Math.round(qty)}g</span></span>`
-      : `<span class="ing-qty">${qty}g</span>`;
+      ? `<span class="ing-qty">${showDiv ? Math.round(qtyRaw/currentDiviseur*10)/10 : qtyRaw} ${unitLabel(unit)}<span style="color:var(--grey-m);font-size:.72rem;font-weight:400"> = ${Math.round(qtyEff)}g</span></span>`
+      : `<span class="ing-qty">${showDiv ? `<span style="color:var(--grey-m);font-size:.75rem;text-decoration:line-through">${qty}g</span> ${Math.round(qtyEff)}g` : qty+'g'}</span>`;
     return `<div class="ing-item">
       <div class="ing-header">
         <div class="ing-name">${a.n}</div>
@@ -1382,7 +1605,8 @@ function renderRepas() {
         ${qtyDisplay}
         <button class="ing-del" onclick="removeIngredient(${idx})">✕</button>
       </div>
-      ${chips ? `<div class="ing-fodmap-row">${chips}</div>` : ''}
+      ${(chips || unknownChips) ? `<div class="ing-fodmap-row">${chips}${unknownChips}</div>` : ''}
+      ${hasUnknown ? `<div class="warn-unknown">⚠️ Données incomplètes — vérifiez cet aliment manuellement</div>` : ''}
     </div>`;
   }).join('');
 }
@@ -1441,7 +1665,14 @@ function renderDB() {
                  : `<span class="db-max">${a.m}g</span>`;
     return `<div class="db-row">
       <div class="db-row-header" onclick="toggleEdit(${realIdx})">
-        <div class="db-nom">${a.n}</div>
+        <div class="db-nom">${a.n}${(() => {
+          const unk = a.unknown||[0,0,0,0,0,0];
+          const maxU = Math.max(...unk);
+          if (maxU === 0) return '';
+          const colors = {1:'#2ecc71',2:'#e67e22',3:'#c0392b'};
+          const labels = {1:'? probable',2:'? incertain',3:'? à éviter'};
+          return `<span class="unknown-badge" style="background:${colors[maxU]}20;color:${colors[maxU]};border-color:${colors[maxU]}40" title="${labels[maxU]}">${maxU===1?'?✓':maxU===2?'?':'?!'}</span>`;
+        })()}</div>
         <div class="db-cat-tag">${a.c}</div>
         ${maxStr}
         <div class="db-dots">${dots}</div>
@@ -1459,6 +1690,22 @@ function buildEditForm(a, idx) {
       <input type="checkbox" ${a.f[i]?'checked':''} id="ef-f${i}-${idx}" style="accent-color:${FODMAP_COLORS[i]}">
       <span style="color:${FODMAP_COLORS[i]}">${FODMAP_SHORT[i]}</span>
     </label>`).join('');
+  const unk = a.unknown || [0,0,0,0,0,0];
+  const cbxUnknown = FODMAP_NAMES.map((name,i) => {
+    const v = unk[i] || 0;
+    const opts = [
+      {val:0, label:'—',  color:'#ccc'},
+      {val:1, label:'?✓', color:'#2ecc71'},
+      {val:2, label:'?',  color:'#e67e22'},
+      {val:3, label:'?!', color:'#c0392b'},
+    ];
+    return `<div style="display:flex;flex-direction:column;align-items:center;gap:2px">
+      <span style="font-size:.7rem;color:#999">${FODMAP_SHORT[i]}</span>
+      <select id="ef-unk${i}-${idx}" style="width:46px;padding:2px;border:1px solid #ddd;border-radius:4px;font-size:.75rem;text-align:center">
+        ${opts.map(o => `<option value="${o.val}" ${v===o.val?'selected':''} style="color:${o.color}">${o.label}</option>`).join('')}
+      </select>
+    </div>`;
+  }).join('');
   return `<div class="db-edit-form">
     <div class="db-edit-row">
       <span class="db-edit-label">Nom</span>
@@ -1486,6 +1733,10 @@ function buildEditForm(a, idx) {
       <span class="db-edit-label">FODMAPs</span>
       <div class="fodmap-checkboxes">${cbx}</div>
     </div>
+    <div class="db-edit-row">
+      <span class="db-edit-label" style="color:var(--grey-m)">Inconnus ?</span>
+      <div class="fodmap-checkboxes">${cbxUnknown}</div>
+    </div>
     <div class="db-edit-btns">
       <button class="btn-save" onclick="saveEdit(${idx})">💾 Enregistrer</button>
       <button class="btn-del" onclick="deleteAliment(${idx})">🗑️</button>
@@ -1509,8 +1760,9 @@ function saveEdit(idx) {
   const u = parseInt(document.getElementById(`ef-u-${idx}`)?.value) || 0;
   const cs = parseInt(document.getElementById(`ef-cs-${idx}`)?.value) || 0;
   const f = FODMAP_NAMES.map((_,i) => document.getElementById(`ef-f${i}-${idx}`).checked ? 1 : 0);
+  const unknown = FODMAP_NAMES.map((_,i) => parseInt(document.getElementById(`ef-unk${i}-${idx}`)?.value||0));
   if (!nom) { toast("⚠️ Le nom est requis"); return; }
-  db[idx] = { n:nom, c:cat, m, f, u, cs };
+  db[idx] = { n:nom, c:cat, m, f, u, cs, unknown };
   saveDB();
   renderDB();
   toast("✅ Aliment modifié");
@@ -1545,6 +1797,23 @@ function toggleAddForm() {
         <input type="checkbox" id="new-f${i}" style="accent-color:${FODMAP_COLORS[i]}">
         <span style="color:${FODMAP_COLORS[i]}">${FODMAP_SHORT[i]}</span>
       </label>`).join('');
+    // Champs inconnus 3 niveaux
+    const unkContainer = document.getElementById('new-fodmaps').closest('.db-edit-row').nextElementSibling;
+    if (unkContainer) {
+      const unkDiv = unkContainer.querySelector('.fodmap-checkboxes');
+      if (unkDiv) {
+        unkDiv.innerHTML = FODMAP_NAMES.map((n,i) => `
+          <div style="display:flex;flex-direction:column;align-items:center;gap:2px">
+            <span style="font-size:.7rem;color:#999">${FODMAP_SHORT[i]}</span>
+            <select id="new-unk${i}" style="width:46px;padding:2px;border:1px solid #ddd;border-radius:4px;font-size:.75rem">
+              <option value="0">—</option>
+              <option value="1" style="color:#2ecc71">?✓</option>
+              <option value="2" style="color:#e67e22">?</option>
+              <option value="3" style="color:#c0392b">?!</option>
+            </select>
+          </div>`).join('');
+      }
+    }
     // Champs poids unitaire
     const existingU = document.getElementById('new-u-row');
     if (!existingU) {
@@ -1571,7 +1840,8 @@ function addNewAliment() {
   const cs = parseInt(document.getElementById('new-cs')?.value) || 0;
   if (!nom) { toast("⚠️ Le nom est requis"); return; }
   if (db.find(a => a.n.toLowerCase() === nom.toLowerCase())) { toast("⚠️ Cet aliment existe déjà"); return; }
-  db.push({ n:nom, c:cat, m, f, u, cs });
+  const unknown = FODMAP_NAMES.map((_,i) => parseInt(document.getElementById(`new-unk${i}`)?.value||0));
+  db.push({ n:nom, c:cat, m, f, u, cs, unknown });
   db.sort((a,b) => a.n.localeCompare(b.n, 'fr'));
   saveDB();
   toggleAddForm();

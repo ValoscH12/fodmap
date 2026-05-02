@@ -1,7 +1,7 @@
 {
-  "name": "FODMAP Analyser",
-  "short_name": "FODMAP",
-  "description": "Analyseur de repas faible en FODMAP — végétarien, source Monash University",
+  "name": "Fodi",
+  "short_name": "Fodi",
+  "description": "Fodi — analyseur de repas faible en FODMAP, végétarien",
   "start_url": "./index.html",
   "display": "standalone",
   "background_color": "#f0f4f2",
