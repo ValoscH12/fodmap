@@ -200,17 +200,15 @@ body{min-height:100vh;padding-bottom:80px}
   padding:6px 10px;font-size:.8rem;margin-top:6px;display:flex;align-items:center;gap:6px}
 
 /* ── DIVISEUR DE PORTIONS ────────────────────────── */
-.diviseur-bar{background:#fff;border:1.5px solid var(--border);border-radius:var(--radius-sm);
-  padding:10px 14px;margin-bottom:10px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
-.diviseur-label{font-size:.82rem;color:var(--grey-m);white-space:nowrap}
-.diviseur-btns{display:flex;gap:5px;flex-wrap:wrap}
-.div-btn{padding:5px 12px;border:1.5px solid var(--border);border-radius:6px;
-  background:#fff;font-family:var(--font);font-size:.82rem;font-weight:500;
-  cursor:pointer;transition:all .2s;color:var(--grey)}
-.div-btn:hover{background:var(--blue-l);border-color:var(--blue);color:var(--blue)}
-.div-btn.active{background:var(--blue);color:#fff;border-color:var(--blue)}
-.div-reset{padding:5px 10px;background:none;border:1.5px solid var(--border);
-  border-radius:6px;font-family:var(--font);font-size:.78rem;color:var(--grey-m);cursor:pointer}
+.diviseur-bar{display:flex;align-items:center;gap:8px;margin-bottom:8px;
+  padding:6px 10px;background:var(--grey-l);border-radius:var(--radius-sm);
+  border:1px solid var(--border)}
+.diviseur-label{font-size:.78rem;color:var(--grey-m);white-space:nowrap}
+.div-input{width:48px;padding:4px 6px;border:1.5px solid var(--border);border-radius:6px;
+  font-family:var(--mono);font-size:.9rem;font-weight:600;text-align:center;
+  background:#fff;color:var(--blue);outline:none}
+.div-input:focus{border-color:var(--blue)}
+.div-hint{font-size:.72rem;color:var(--grey-m);font-style:italic;flex:1}
 
 /* ── TOAST ────────────────────────────────────────── */
 .toast{position:fixed;bottom:90px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--grey);color:#fff;padding:10px 20px;border-radius:30px;font-size:.85rem;font-weight:500;opacity:0;transition:all .3s;pointer-events:none;z-index:999;white-space:nowrap}
@@ -363,15 +361,13 @@ body{min-height:100vh;padding-bottom:80px}
 
     <!-- Diviseur de portions -->
     <div class="diviseur-bar" id="diviseur-bar" style="display:none">
-      <span class="diviseur-label">🍽️ Diviser pour</span>
-      <div class="diviseur-btns">
-        <button class="div-btn active" onclick="setDiviseur(1)" id="div-1">1 pers.</button>
-        <button class="div-btn" onclick="setDiviseur(2)" id="div-2">÷ 2</button>
-        <button class="div-btn" onclick="setDiviseur(3)" id="div-3">÷ 3</button>
-        <button class="div-btn" onclick="setDiviseur(4)" id="div-4">÷ 4</button>
-        <button class="div-btn" onclick="setDiviseur(6)" id="div-6">÷ 6</button>
-      </div>
-      <span id="div-label" style="font-size:.75rem;color:var(--grey-m);font-style:italic"></span>
+      <span class="diviseur-label">🍽️ Pour</span>
+      <input type="number" class="div-input" id="div-input"
+             value="1" min="1" max="100" step="0.5"
+             oninput="setDiviseur(parseFloat(this.value)||1)"
+             title="Nombre de parts — ex: 8 pour une recette pour 8">
+      <span class="diviseur-label">part(s)</span>
+      <span class="div-hint" id="div-label"></span>
     </div>
 
     <!-- Liste des ingrédients -->
@@ -938,14 +934,13 @@ let currentUnit = 'g'; // unité active : g / u / cs / cc
 let currentDiviseur = 1; // diviseur de portions actif
 
 function setDiviseur(d) {
-  currentDiviseur = d;
-  // Mettre à jour les boutons
-  [1,2,3,4,6].forEach(n => {
-    const btn = document.getElementById('div-'+n);
-    if (btn) btn.classList.toggle('active', n === d);
-  });
+  currentDiviseur = d > 0 ? d : 1;
   const lbl = document.getElementById('div-label');
-  if (lbl) lbl.textContent = d === 1 ? 'Quantités complètes' : `Chaque ingrédient ÷ ${d} → quantité pour 1 personne`;
+  if (lbl) lbl.textContent = currentDiviseur === 1
+    ? '' : `→ quantités pour 1 part sur ${currentDiviseur}`;
+  // Sync input si appelé depuis ailleurs
+  const inp = document.getElementById('div-input');
+  if (inp && parseFloat(inp.value) !== currentDiviseur) inp.value = currentDiviseur;
   renderRepas();
 }
 let excludedFodmaps = new Set(); // FODMAPs ignorés (Phase 3)
@@ -1733,9 +1728,14 @@ function buildEditForm(a, idx) {
       <span class="db-edit-label">FODMAPs</span>
       <div class="fodmap-checkboxes">${cbx}</div>
     </div>
-    <div class="db-edit-row">
-      <span class="db-edit-label" style="color:var(--grey-m)">Inconnus ?</span>
-      <div class="fodmap-checkboxes">${cbxUnknown}</div>
+    <div class="db-edit-row" style="align-items:flex-start">
+      <span class="db-edit-label" style="color:var(--grey-m);padding-top:6px">
+        Niveau ?<br>
+        <span style="font-size:.68rem;line-height:1.3;display:block;margin-top:2px">
+          — = connu<br>?✓ = probable ok<br>? = incertain<br>?! = éviter
+        </span>
+      </span>
+      <div style="display:flex;gap:6px;flex-wrap:wrap">${cbxUnknown}</div>
     </div>
     <div class="db-edit-btns">
       <button class="btn-save" onclick="saveEdit(${idx})">💾 Enregistrer</button>
