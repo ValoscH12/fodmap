@@ -29,12 +29,12 @@ html{font-family:var(--font);background:#f0f4f2;color:#1a2634;font-size:15px}
 body{min-height:100vh;padding-bottom:80px}
 
 /* ── HEADER ───────────────────────────────────────── */
-.app-header{background:var(--green);color:#fff;padding:16px 20px 12px;position:sticky;top:0;z-index:100;box-shadow:0 2px 12px rgba(26,122,74,.25)}
-.app-header h1{font-size:1.2rem;font-weight:600;letter-spacing:-.01em}
-.app-header p{font-size:.78rem;opacity:.8;margin-top:2px}
-.nav-tabs{display:flex;gap:4px;margin-top:12px}
-.nav-tab{flex:1;padding:7px 4px;border:none;border-radius:8px;background:rgba(255,255,255,.15);color:rgba(255,255,255,.8);font-family:var(--font);font-size:.78rem;font-weight:500;cursor:pointer;transition:all .2s}
+.app-header{background:var(--green);color:#fff;padding:8px 8px 6px;position:sticky;top:0;z-index:100;box-shadow:0 2px 12px rgba(26,122,74,.25)}
+.nav-tabs{display:flex;gap:3px;align-items:center}
+.app-title-tab{font-size:.95rem;font-weight:700;color:#fff;padding:6px 8px;white-space:nowrap;letter-spacing:-.01em}
+.nav-tab{flex:1;padding:6px 4px;border:none;border-radius:7px;background:rgba(255,255,255,.15);color:rgba(255,255,255,.85);font-family:var(--font);font-size:.75rem;font-weight:500;cursor:pointer;transition:all .2s;white-space:nowrap}
 .nav-tab.active{background:#fff;color:var(--green);font-weight:600}
+.nav-tab-sm{flex:0 0 auto;padding:6px 8px;font-size:.8rem}
 
 /* ── PAGES ────────────────────────────────────────── */
 .page{display:none;padding:16px;animation:fadeIn .2s ease}
@@ -69,42 +69,50 @@ body{min-height:100vh;padding-bottom:80px}
 
 /* Ingredient list */
 .ing-list{display:flex;flex-direction:column;gap:8px}
-.ing-item{background:#fff;border:1.5px solid var(--border);border-radius:var(--radius-sm);overflow:hidden}
-.ing-header{display:flex;align-items:center;gap:10px;padding:10px 12px}
-.ing-name{flex:1;font-size:.9rem;font-weight:500}
-.ing-qty{font-family:var(--mono);font-size:.85rem;color:var(--blue);background:var(--blue-l);padding:3px 8px;border-radius:5px}
-.ing-max{font-size:.75rem;color:var(--grey-m)}
-.ing-del{background:none;border:none;cursor:pointer;color:var(--red);font-size:1.1rem;padding:4px;opacity:.6;transition:opacity .2s}
+.ing-item{background:#fff;border:1.5px solid var(--border);border-radius:var(--radius-sm);overflow:hidden;margin-bottom:4px}
+.ing-header{display:flex;align-items:center;gap:6px;padding:6px 8px;flex-wrap:wrap}
+.ing-name{font-size:.85rem;font-weight:500;flex:1;min-width:0;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ing-qty{font-family:var(--mono);font-size:.78rem;color:var(--blue);
+  background:var(--blue-l);padding:2px 6px;border-radius:4px;white-space:nowrap;flex-shrink:0}
+.ing-max{font-size:.7rem;color:var(--grey-m);white-space:nowrap}
+.ing-del{background:none;border:none;cursor:pointer;color:var(--red);
+  font-size:1rem;padding:2px 4px;opacity:.5;transition:opacity .2s;flex-shrink:0}
 .ing-del:hover{opacity:1}
-.ing-fodmap-row{display:flex;padding:4px 12px 10px;gap:5px;flex-wrap:wrap}
-.fodmap-chip{display:flex;align-items:center;gap:3px;padding:3px 7px;border-radius:5px;font-size:.72rem;font-weight:500}
+.ing-fodmap-row{display:flex;padding:2px 8px 6px;gap:3px;flex-wrap:wrap}
+.fodmap-chip{display:flex;align-items:center;gap:2px;padding:2px 5px;border-radius:4px;font-size:.68rem;font-weight:500}
 .fodmap-chip.ok{background:#f0f0f0;color:#999}
 .fodmap-chip.warn{background:var(--orange-l);color:var(--orange)}
 .fodmap-chip.danger{background:var(--red-l);color:var(--red)}
 .fodmap-chip.always{background:var(--red);color:#fff}
 
 /* Résultat global */
-.result-card{border-radius:var(--radius);padding:18px 20px;text-align:center;margin-bottom:14px;transition:all .3s}
-.result-card.empty{background:#f4f6f7;color:var(--grey-m)}
+.result-card{border-radius:var(--radius-sm);padding:8px 12px;
+  display:flex;align-items:center;gap:8px;margin-bottom:8px;transition:all .3s}
 .result-card.ok{background:var(--green);color:#fff}
 .result-card.warn{background:var(--orange);color:#fff}
 .result-card.bad{background:var(--red);color:#fff}
-.result-emoji{font-size:2rem;display:block;margin-bottom:6px}
-.result-text{font-size:1.05rem;font-weight:600}
-.result-sub{font-size:.82rem;opacity:.85;margin-top:4px}
+.result-emoji{font-size:1.2rem;flex-shrink:0}
+.result-text{font-size:.88rem;font-weight:600;flex:1}
+.result-sub{font-size:.75rem;opacity:.85}
 
 /* Totaux FODMAP */
-.totaux-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
-.total-cell{border-radius:var(--radius-sm);padding:10px 8px;text-align:center}
-.total-cell.ok{background:var(--green-l)}
-.total-cell.warn{background:var(--orange-l)}
-.total-cell.bad{background:var(--red-l)}
-.total-name{font-size:.7rem;font-weight:600;color:var(--grey);text-transform:uppercase;letter-spacing:.04em}
-.total-pct{font-size:1.3rem;font-weight:600;margin:4px 0 2px;line-height:1}
-.total-pct.ok{color:var(--green)}
-.total-pct.warn{color:var(--orange)}
-.total-pct.bad{color:var(--red)}
-.total-bar{height:4px;border-radius:2px;background:#e0e6ea;overflow:hidden;margin-top:4px}
+.totaux-line{display:flex;gap:4px;padding:4px 2px}
+.total-pill{flex:1;display:flex;flex-direction:column;align-items:center;
+  border-radius:6px;padding:4px 2px;min-width:0}
+.total-pill.ok{background:var(--green-l)}
+.total-pill.warn{background:var(--orange-l)}
+.total-pill.bad{background:var(--red-l)}
+.total-pill-name{font-size:.62rem;font-weight:700;text-transform:uppercase;
+  letter-spacing:.02em;white-space:nowrap;overflow:hidden}
+.total-pill-name.ok{color:var(--green)}
+.total-pill-name.warn{color:var(--orange)}
+.total-pill-name.bad{color:var(--red)}
+.total-pill-pct{font-size:.78rem;font-weight:700;line-height:1.2}
+.total-pill-pct.ok{color:var(--green)}
+.total-pill-pct.warn{color:var(--orange)}
+.total-pill-pct.bad{color:var(--red)}
+.total-bar{height:3px;border-radius:2px;background:#e0e6ea;overflow:hidden;width:100%;margin-top:2px}
 .total-bar-fill{height:100%;border-radius:2px;transition:width .4s}
 .total-bar-fill.ok{background:var(--green)}
 .total-bar-fill.warn{background:var(--orange)}
@@ -281,21 +289,14 @@ body{min-height:100vh;padding-bottom:80px}
 </div>
 
 <header class="app-header">
-  <h1>🥦 Fodi</h1>
-  <p style="display:flex;align-items:center;gap:8px">
-    <span style="font-size:.78rem;opacity:.8">Fodi · Source Monash</span>
-    <span id="sync-status" style="font-size:.75rem;flex:1"></span>
-    <button onclick="showTokenSetup()"
-      style="padding:3px 10px;background:rgba(255,255,255,.2);color:#fff;
-      border:1px solid rgba(255,255,255,.5);border-radius:5px;
-      font-size:.75rem;cursor:pointer;font-family:var(--font);white-space:nowrap"
-      id="token-header-btn">🔐 Sync</button>
-  </p>
   <div class="nav-tabs">
+    <span class="app-title-tab">🥦 Fodi</span>
     <button class="nav-tab active" onclick="goPage('repas')">🍽️ Mon repas</button>
-    <button class="nav-tab" onclick="goPage('base')">📋 Base données</button>
-    <button class="nav-tab" onclick="goPage('aide')">ℹ️ Aide</button>
+    <button class="nav-tab" onclick="goPage('base')">📋 Base</button>
+    <button class="nav-tab nav-tab-sm" onclick="goPage('aide')">ℹ️</button>
+    <button class="nav-tab nav-tab-sm" onclick="showTokenSetup()" id="token-header-btn">🔐</button>
   </div>
+  <div id="sync-status" style="font-size:.7rem;color:rgba(255,255,255,.8);text-align:center;min-height:14px;margin-top:2px;padding:0 8px"></div>
 </header>
 
 <div class="toast" id="toast"></div>
@@ -317,47 +318,38 @@ body{min-height:100vh;padding-bottom:80px}
     ⚙️ Afficher les réglages Phase 3
   </button>
 
-  <!-- Résultat global -->
-  <div class="result-card empty" id="result-card">
-    <span class="result-emoji">☝️</span>
-    <div class="result-text">Ajoutez des ingrédients</div>
-    <div class="result-sub">Tapez un aliment ci-dessous</div>
-  </div>
+  <!-- Résultat global (caché quand vide) -->
+  <div id="result-card" style="display:none"></div>
 
-  <!-- Totaux par FODMAP -->
-  <div class="card" id="totaux-card" style="display:none">
-    <div class="card-title">Cumul par FODMAP</div>
-    <div class="totaux-grid" id="totaux-grid"></div>
+  <!-- Totaux par FODMAP : ligne compacte -->
+  <div id="totaux-card" style="display:none;margin-bottom:8px">
+    <div class="totaux-line" id="totaux-grid"></div>
   </div>
 
   <!-- Saisie ingrédient -->
   <div class="card">
     <div class="card-title">Ajouter un ingrédient</div>
-    <div class="search-row">
-      <div class="search-wrap">
-        <span class="search-icon">🔍</span>
-        <input type="text" class="search-input" id="search-input"
-               placeholder="Tapez un aliment… (kiwi, tomate…)"
-               autocomplete="off" autocorrect="off" spellcheck="false"
-               oninput="onSearch(this.value)"
-               onkeydown="onSearchKey(event)">
-        <div class="suggestions" id="suggestions"></div>
-      </div>
-      <div class="qty-wrap">
-        <input type="number" class="qty-input" id="qty-input"
-               placeholder="qté" min="0.1" max="9999" step="0.5"
-               onkeydown="if(event.key==='Enter')addIngredient()">
-        <div class="unit-row">
-          <span class="unit-label">Unité :</span>
-          <button class="unit-btn active" onclick="setUnit('g')" id="unit-g">g</button>
-          <button class="unit-btn" onclick="setUnit('u')" id="unit-u">unité</button>
-          <button class="unit-btn" onclick="setUnit('cs')" id="unit-cs">cs</button>
-          <button class="unit-btn" onclick="setUnit('cc')" id="unit-cc">cc</button>
-        </div>
-      </div>
+    <div class="search-wrap" style="margin-bottom:6px">
+      <span class="search-icon">🔍</span>
+      <input type="text" class="search-input" id="search-input"
+             placeholder="Tapez un aliment… (kiwi, tomate…)"
+             autocomplete="off" autocorrect="off" spellcheck="false"
+             oninput="onSearch(this.value)"
+             onkeydown="onSearchKey(event)">
+      <div class="suggestions" id="suggestions"></div>
+    </div>
+    <div style="display:flex;gap:6px;align-items:center;margin-bottom:4px">
+      <input type="number" class="qty-input" id="qty-input"
+             placeholder="qté" min="0.1" max="9999" step="0.5"
+             style="flex:1;width:auto"
+             onkeydown="if(event.key==='Enter')addIngredient()">
+      <button class="unit-btn active" onclick="setUnit('g')" id="unit-g">g</button>
+      <button class="unit-btn" onclick="setUnit('u')" id="unit-u">unité</button>
+      <button class="unit-btn" onclick="setUnit('cs')" id="unit-cs">cs</button>
+      <button class="unit-btn" onclick="setUnit('cc')" id="unit-cc">cc</button>
       <button class="add-btn" onclick="addIngredient()" title="Ajouter">+</button>
     </div>
-    <div id="unit-hint-bar" style="font-size:.75rem;color:var(--grey-m);margin:-4px 0 8px;padding-left:2px;min-height:16px"></div>
+    <div id="unit-hint-bar" style="font-size:.72rem;color:var(--grey-m);margin-bottom:4px;min-height:14px;padding-left:2px"></div>
 
     <!-- Diviseur de portions -->
     <div class="diviseur-bar" id="diviseur-bar" style="display:none">
@@ -371,7 +363,7 @@ body{min-height:100vh;padding-bottom:80px}
     </div>
 
     <!-- Liste des ingrédients -->
-    <div class="section-title" id="ing-label" style="display:none">Ingrédients du repas</div>
+    <div id="ing-label" style="display:none"></div>
     <div class="ing-list" id="ing-list"></div>
 
     <button class="reset-btn" onclick="resetRepas()" style="margin-top:12px">
@@ -386,15 +378,12 @@ body{min-height:100vh;padding-bottom:80px}
 <div class="page" id="page-base">
 
   <!-- Ajout nouvel aliment -->
-  <div style="display:flex;gap:8px;margin-bottom:8px">
-    <button onclick="showTokenSetup()" style="flex:1;padding:9px;background:#fff;color:var(--green);border:1.5px solid var(--green);border-radius:var(--radius-sm);font-family:var(--font);font-size:.82rem;cursor:pointer" id="token-btn">🔐 Token sync</button>
+  <div style="display:flex;gap:6px;margin-bottom:10px">
+    <button onclick="exportDB()" style="flex:1;padding:8px 4px;background:#fff;color:var(--blue);border:1.5px solid var(--blue);border-radius:var(--radius-sm);font-family:var(--font);font-size:.78rem;cursor:pointer">💾 Export</button>
+    <button onclick="importDB()" style="flex:1;padding:8px 4px;background:#fff;color:var(--orange);border:1.5px solid var(--orange);border-radius:var(--radius-sm);font-family:var(--font);font-size:.78rem;cursor:pointer">📂 Import</button>
+    <button onclick="showTokenSetup()" style="flex:1;padding:8px 4px;background:#fff;color:var(--green);border:1.5px solid var(--green);border-radius:var(--radius-sm);font-family:var(--font);font-size:.78rem;cursor:pointer" id="token-btn">🔐 Token</button>
+    <button onclick="toggleCatManage()" style="flex:1;padding:8px 4px;background:#fff;color:var(--grey);border:1.5px solid var(--border);border-radius:var(--radius-sm);font-family:var(--font);font-size:.78rem;cursor:pointer">⚙️ Catég.</button>
   </div>
-  <div style="display:flex;gap:8px;margin-bottom:8px">
-    <button class="btn-cats-open" onclick="toggleCatManage()" style="flex:1">⚙️ Catégories</button>
-    <button onclick="exportDB()" style="flex:1;padding:9px;background:#fff;color:var(--blue);border:1.5px solid var(--blue);border-radius:var(--radius-sm);font-family:var(--font);font-size:.82rem;cursor:pointer">💾 Exporter</button>
-    <button onclick="importDB()" style="flex:1;padding:9px;background:#fff;color:var(--orange);border:1.5px solid var(--orange);border-radius:var(--radius-sm);font-family:var(--font);font-size:.82rem;cursor:pointer">📂 Importer</button>
-  </div>
-  <button class="btn-cats-open" onclick="toggleCatManage()">⚙️ Gérer les catégories</button>
   <div class="cats-manage" id="cats-manage">
     <div class="card-title" style="margin-bottom:8px">Catégories</div>
     <div class="cats-list" id="cats-list"></div>
@@ -1532,21 +1521,21 @@ function renderRepas() {
   const rc = document.getElementById('result-card');
   const maxT = Math.max(...totaux);
   if (repas.length === 0) {
+    rc.style.display = 'none';
     rc.className = 'result-card empty';
-    rc.innerHTML = '<span class="result-emoji">☝️</span><div class="result-text">Ajoutez des ingrédients</div><div class="result-sub">Tapez un aliment ci-dessous</div>';
+    rc.innerHTML = '';
   } else if (maxT > 1) {
-    rc.className = 'result-card bad';
+    rc.style.display = 'flex'; rc.className = 'result-card bad';
     const exceedants = FODMAP_SHORT.filter((_,i) => totaux[i] > 1).join(', ');
-    rc.innerHTML = `<span class="result-emoji">❌</span><div class="result-text">Repas non faible en FODMAP</div><div class="result-sub">Excès : ${exceedants}</div>`;
+    rc.innerHTML = `<span class="result-emoji">❌</span><div class="result-text">Excès : ${exceedants}</div>`;
   } else if (maxT > 0.8) {
-    rc.className = 'result-card warn';
-    rc.innerHTML = `<span class="result-emoji">⚠️</span><div class="result-text">À la limite — soyez prudente</div><div class="result-sub">Évitez d'ajouter d'autres aliments riches</div>`;
+    rc.style.display = 'flex'; rc.className = 'result-card warn';
+    rc.innerHTML = `<span class="result-emoji">⚠️</span><div class="result-text">À la limite — évitez d'ajouter d'autres aliments riches</div>`;
   } else {
     const hasAnyUnknown = repas.some(({aliment:a}) => (a.unknown||[]).some(v=>v));
-    rc.className = 'result-card ok';
+    rc.style.display = 'flex'; rc.className = 'result-card ok';
     rc.innerHTML = `<span class="result-emoji">${hasAnyUnknown ? '✅⚠️' : '✅'}</span>
-      <div class="result-text">Repas faible en FODMAP${hasAnyUnknown ? ' — données incomplètes' : ''}</div>
-      <div class="result-sub">${hasAnyUnknown ? 'Certains FODMAPs sont marqués ? — vérifiez manuellement' : 'Bon appétit !'}</div>`;
+      <div class="result-text">${hasAnyUnknown ? 'OK — mais données incomplètes (?)' : 'Repas faible en FODMAP — bon appétit !'}</div>`;
   }
 
   // Totaux grid
@@ -1555,14 +1544,21 @@ function renderRepas() {
   if (repas.length === 0) { tc.style.display='none'; }
   else {
     tc.style.display='block';
+    tc.style.padding='0';
+    tc.style.background='transparent';
+    tc.style.boxShadow='none';
     tg.innerHTML = totaux.map((t,i) => {
       const pct = Math.min(Math.round(t*100), 999);
       const cls = t > 1 ? 'bad' : t > 0.8 ? 'warn' : 'ok';
       const barW = Math.min(pct, 100);
-      if (t === 0) return `<div class="total-cell ok"><div class="total-name">${FODMAP_SHORT[i]}</div><div class="total-pct ok">—</div><div class="total-bar"><div class="total-bar-fill ok" style="width:0%"></div></div></div>`;
-      return `<div class="total-cell ${cls}">
-        <div class="total-name">${FODMAP_SHORT[i]}</div>
-        <div class="total-pct ${cls}">${pct > 999 ? '❌' : pct+'%'}</div>
+      if (t === 0) return `<div class="total-pill ok">
+        <div class="total-pill-name ok">${FODMAP_SHORT[i]}</div>
+        <div class="total-pill-pct ok">—</div>
+        <div class="total-bar"><div class="total-bar-fill ok" style="width:0%"></div></div>
+      </div>`;
+      return `<div class="total-pill ${cls}">
+        <div class="total-pill-name ${cls}">${FODMAP_SHORT[i]}</div>
+        <div class="total-pill-pct ${cls}">${pct > 999 ? '❌' : pct+'%'}</div>
         <div class="total-bar"><div class="total-bar-fill ${cls}" style="width:${barW}%"></div></div>
       </div>`;
     }).join('');
